@@ -48,53 +48,40 @@ void game_init(void)
 	bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
 }
 
-void unpause() {
-	paused = 0;
-	pauseMenuShowing = 0;
-}
-
 void game_update(void)
 {
+
+	float ww = CP_System_GetWindowWidth();
+	float wh = CP_System_GetWindowHeight();
+
 	if (paused) {
 		if (pauseMenuShowing) {
 			//close pause menu
 			if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-				unpause();
+				paused = 0;
+				pauseMenuShowing = 0;
 			}
 			if (CP_Input_KeyReleased(KEY_SPACE)) {
 				CP_Engine_Terminate();
 			}
 		}
 		else {
-			float ww = (float)CP_System_GetWindowWidth();
-			float wh = (float)CP_System_GetWindowHeight();
 			
 			CP_Settings_Fill(CP_Color_Create(255, 255, 255, 50));
 			CP_Graphics_DrawRect(0, 0, ww, wh);
 			CP_Settings_Fill(CP_Color_Create(50, 50, 50, 50));
 			CP_Graphics_DrawRect(ww / 4, wh / 4, ww / 2, wh / 2);
 
-			float bw = (ww * 4 / 39); //button width.
-			float bh = (bw / 2); //button height
-			float spacing = (bw / 2); //gap between both buttons
-			float marginBottom = bh * 2; //gap between button and bottom border
-			//In hopes to remove "MAGIC" numbers, everything is calculated based on the fullscreen window. 
-			//This means I'm doing a lot of awkward math, but hypothetically everything should lineup on all monitors
-			//I'm also reusing certain values in different variables (MarginBottom is equal to Button Width) because
-			//   the variable acts as a named alias. The fact that it's equal to button width is coincidence.
-
-			CP_Graphics_DrawRect(ww / 2 - bw - spacing, (wh / 4) * 3 - marginBottom, bw, bh);
-			CP_Graphics_DrawRect(ww / 2 + spacing, (wh / 4) * 3 - marginBottom, bw, bh);
-
 			CP_Settings_Fill(CP_Color_Create(0, 0, 0, 255));
 			CP_Settings_Stroke(CP_Color_Create(0, 0, 0, 255));
-			CP_Settings_StrokeWeight(2.0f);
-			CP_Settings_TextSize(bh / 2);
+			CP_Settings_TextSize(70.0f);
 
 			CP_Font_Set(bubbleLetters);
-			CP_Font_DrawText("PAUSED", ww / 2, (wh / 4) * 2 + marginBottom);
-			CP_Font_DrawText("Quit", ww / 2 - bw*3/5 - spacing, (wh / 4) * 3 - marginBottom + bh*2/3);
-			CP_Font_DrawText("Settings", ww / 2 - bw*3/5 - spacing, (wh / 4) * 3 - marginBottom + bh*2/3);
+			CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+			CP_Font_DrawText("PAUSED", ww / 2, wh * 3 / 8);
+			CP_Settings_TextSize(50.0f);
+			CP_Font_DrawText("Press ESC to resume", ww / 2, wh * 4 / 8);
+			CP_Font_DrawText("Press SPACE to quit", ww / 2, wh * 5 / 8);
 			pauseMenuShowing = 1;
 		}
 	}
