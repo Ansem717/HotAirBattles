@@ -38,6 +38,7 @@ Getting Hit - while I want there to be a way for players to skillfully save them
 */
 
 CP_Font bubbleLetters;
+CP_Image cloudTexture;
 
 CP_Color BLACK;
 
@@ -50,9 +51,37 @@ float drag = 0.1f;
 float velocityIncrement = 0.2f;
 float windSpeedX, windSpeedY;
 
+struct Cloud {
+	int size;
+	float x;
+	float y;
+	int img_id; //0 to 12 variations
+};
+
+struct TextureRect {
+	float w;
+	float h;
+	float x0;
+	float y0;
+	float x1; 
+	float y1;
+};
+
+struct TextureRect CLOUD_TEXTURE_POSITIONS[] = {
+	{140, 100, 1, 1, 140, 100},
+	{140, 100, 140, 0, 280, 100},
+	{100, 100, 280, 0, 380, 100},
+	{140, 100, 380, 0, 520, 100},
+	{260, 100, 520, 0, 680, 100},
+	{100, 100, 720, 0, 820, 100}
+};
+
+int i = 5;
+
 void game_init(void) {
 	CP_System_Fullscreen();
 	bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
+	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
@@ -78,12 +107,10 @@ void game_update(void) {
 			}
 		} else {
 
-			CP_Settings_Fill(CP_Color_Create(255, 255, 255, 50));
-			CP_Graphics_DrawRect(0, 0, ww, wh);
-			CP_Settings_Fill(CP_Color_Create(50, 50, 50, 50));
+			CP_Settings_Fill(CP_Color_Create(50, 50, 50, 175));
 			CP_Graphics_DrawRect(ww / 4, wh / 4, ww / 2, wh / 2);
 
-			CP_Settings_Fill(BLACK);
+			CP_Settings_Fill(CP_Color_Create(255,255,255,255));
 			CP_Font_Set(bubbleLetters);
 			CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
@@ -99,6 +126,8 @@ void game_update(void) {
 	} else {
 		//Play The Game
 		CP_Graphics_ClearBackground(CP_Color_Create(32, 192, 255, 255));
+		CP_Settings_Fill(CP_Color_Create(72, 255, 72, 255));
+		CP_Graphics_DrawRect(0, wh * 0.80f, ww, wh / 4);
 		CP_Settings_Fill(BLACK);
 
 		playerX = ww / 2;
@@ -109,13 +138,6 @@ void game_update(void) {
 		CP_Graphics_DrawLine(playerX + 40, playerY-50, playerX + 15, playerY + 40);
 		CP_Graphics_DrawRect(playerX - 15, playerY + 40, 30, 30);
 
-
-
-		/*CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
-		CP_Graphics_DrawLine(ww/2,0,ww/2,wh);
-		CP_Graphics_DrawLine(0, wh / 2, ww, wh/2);
-		CP_Settings_Stroke(BLACK);*/
-
 		//Perpetual motion based on velocity
 		//Velocity increases and decreases based on user input
 		//When no user input applied, velocity will gradually go towards 0
@@ -124,8 +146,8 @@ void game_update(void) {
 
 		//playerX = (playerX >= ww) ? ww - drag : (playerX <= 0) ? 0 + drag : playerX + velocityX;
 		//playerY = (playerY >= wh-230) ? wh-230-drag : (playerY <= 0) ? 0 + drag : playerY + velocityY;
-		//velocityX = (velocityX <= windSpeedX) ? velocityX + drag : velocityX - drag;
-		//velocityY = (velocityY <= windSpeedY) ? velocityY + drag : velocityY - drag;
+		velocityX = (velocityX < 0) ? velocityX + drag : velocityX - drag;
+		velocityY = (velocityY < 0) ? velocityY + drag : velocityY - drag;
 
 		//COMMENTING OUT THE WINDSPEED
 		//WILL REIMPLEMENT LATER
@@ -138,27 +160,28 @@ void game_update(void) {
 		char* result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", windSpeedX);
 		CP_Font_DrawText(result, ww/2, wh*2/6);
-		free(result);
+		free(result);*/
 
 		int len = snprintf(NULL, 0, "%.2f", velocityX);
 		char* result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", velocityX);
-		CP_Font_DrawText(result, ww / 2, wh * 3 / 6);
+		CP_Font_DrawText(result, ww / 2 - 100, 100);
 		free(result);
 
-		len = snprintf(NULL, 0, "%.2f", windSpeedY);
+		/*len = snprintf(NULL, 0, "%.2f", windSpeedY);
 		result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", windSpeedY);
 		CP_Font_DrawText(result, ww / 2, wh * 4 / 6);
-		free(result);
+		free(result);*/
 
 		len = snprintf(NULL, 0, "%.2f", velocityY);
 		result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", velocityY);
-		CP_Font_DrawText(result, ww / 2, wh * 4 / 6);
-		free(result);*/
+		CP_Font_DrawText(result, ww / 2 + 100, 100);
+		free(result);
 
-		//CP_Font_DrawText(windSpeedY, ww / 2, wh * 5 / 8);
+		struct TextureRect current = CLOUD_TEXTURE_POSITIONS[i];
+		CP_Image_DrawSubImage(cloudTexture, ww*0.7f, wh/2, current.w, current.h, current.x0, current.y0, current.x1, current.y1, 255);
 
 		if (CP_Input_KeyDown(KEY_W) || CP_Input_KeyDown(KEY_UP) ) {
 			velocityY -= velocityIncrement;
@@ -181,7 +204,6 @@ void game_update(void) {
 		}
 	}
 }
-
 
 
 void game_exit(void) {
