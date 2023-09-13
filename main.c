@@ -13,6 +13,8 @@
 //---------------------------------------------------------
 
 #include "cprocessing.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 /*
 Ok so, the plan is to make a hot-air-balloon game, that's half exploration half action
@@ -46,7 +48,7 @@ float playerX, playerY, velocityX, velocityY;
 float ww, wh;
 float drag = 0.1f;
 float velocityIncrement = 0.2f;
-float windSpeed;
+float windSpeedX, windSpeedY;
 
 void game_init(void) {
 	CP_System_Fullscreen();
@@ -56,6 +58,10 @@ void game_init(void) {
 	wh = CP_System_GetWindowHeight();
 	playerX = ww / 4;
 	playerY = wh / 2;
+
+	CP_Settings_Fill(BLACK);
+	CP_Font_Set(bubbleLetters);
+	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 }
 
 void game_update(void) {
@@ -104,11 +110,42 @@ void game_update(void) {
 		//Perpetual motion based on velocity
 		//Velocity increases and decreases based on user input
 		//When no user input applied, velocity will gradually go towards 0
-		//TODO: Velocity will gradually go towards *wind speed*
-		playerX += velocityX;
-		playerY += velocityY;
-		velocityX = (velocityX <= 0) ? velocityX + drag : velocityX - drag;
-		velocityY = (velocityY <= 0) ? velocityY + drag : velocityY - drag;
+
+		playerX = (playerX >= ww) ? ww - drag : (playerX <= 0) ? 0 + drag : playerX + velocityX;
+		playerY = (playerY >= wh-230) ? wh-230-drag : (playerY <= 0) ? 0 + drag : playerY + velocityY;
+		velocityX = (velocityX <= windSpeedX) ? velocityX + drag : velocityX - drag;
+		velocityY = (velocityY <= windSpeedY) ? velocityY + drag : velocityY - drag;
+
+		windSpeedX += CP_Random_RangeFloat(-0.5, 0.5);
+		windSpeedY += CP_Random_RangeFloat(-0.05, 0.05);
+
+		CP_Settings_TextSize(50.0f);
+
+		int len = snprintf(NULL, 0, "%.2f", windSpeedX);
+		char* result = malloc(len + 1);
+		snprintf(result, len + 1, "%.2f", windSpeedX);
+		CP_Font_DrawText(result, ww/2, wh*2/6);
+		free(result);
+
+		len = snprintf(NULL, 0, "%.2f", velocityX);
+		result = malloc(len + 1);
+		snprintf(result, len + 1, "%.2f", velocityX);
+		CP_Font_DrawText(result, ww / 2, wh * 3 / 6);
+		free(result);
+
+		len = snprintf(NULL, 0, "%.2f", windSpeedY);
+		result = malloc(len + 1);
+		snprintf(result, len + 1, "%.2f", windSpeedY);
+		CP_Font_DrawText(result, ww / 2, wh * 4 / 6);
+		free(result);
+
+		len = snprintf(NULL, 0, "%.2f", velocityY);
+		result = malloc(len + 1);
+		snprintf(result, len + 1, "%.2f", velocityY);
+		CP_Font_DrawText(result, ww / 2, wh * 5 / 6);
+		free(result);
+
+		//CP_Font_DrawText(windSpeedY, ww / 2, wh * 5 / 8);
 
 		if (CP_Input_KeyDown(KEY_W) || CP_Input_KeyDown(KEY_UP) ) {
 			velocityY -= velocityIncrement;
@@ -122,7 +159,6 @@ void game_update(void) {
 		if (CP_Input_KeyDown(KEY_D)|| CP_Input_KeyDown(KEY_RIGHT)) {
 			velocityX += velocityIncrement;
 		}
-
 
 		/************\
 		| PAUSE MENU |
