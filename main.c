@@ -99,36 +99,49 @@ void game_update(void) {
 	} else {
 		//Play The Game
 		CP_Graphics_ClearBackground(CP_Color_Create(32, 192, 255, 255));
-
-		//Crude Hot Air Balloon
 		CP_Settings_Fill(BLACK);
-		CP_Graphics_DrawEllipse(playerX, playerY, 150, 200);
-		CP_Graphics_DrawLine(playerX - 75, playerY, playerX - 25, playerY + 170);
-		CP_Graphics_DrawLine(playerX + 75, playerY, playerX + 25, playerY + 170);
-		CP_Graphics_DrawRect(playerX - 25, playerY + 170, 50, 50);
+
+		playerX = ww / 2;
+		playerY = wh / 2;
+
+		CP_Graphics_DrawEllipse(playerX, playerY - 50, 80, 90);
+		CP_Graphics_DrawLine(playerX - 40, playerY-50, playerX - 15, playerY + 40);
+		CP_Graphics_DrawLine(playerX + 40, playerY-50, playerX + 15, playerY + 40);
+		CP_Graphics_DrawRect(playerX - 15, playerY + 40, 30, 30);
+
+
+
+		/*CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
+		CP_Graphics_DrawLine(ww/2,0,ww/2,wh);
+		CP_Graphics_DrawLine(0, wh / 2, ww, wh/2);
+		CP_Settings_Stroke(BLACK);*/
 
 		//Perpetual motion based on velocity
 		//Velocity increases and decreases based on user input
 		//When no user input applied, velocity will gradually go towards 0
+		//MOVE THE PLAYER BY MOVING EVERYTHING ELSE! 
+		//THE PLAYER NEVER ACTUALLY MOVES! 
 
-		playerX = (playerX >= ww) ? ww - drag : (playerX <= 0) ? 0 + drag : playerX + velocityX;
-		playerY = (playerY >= wh-230) ? wh-230-drag : (playerY <= 0) ? 0 + drag : playerY + velocityY;
-		velocityX = (velocityX <= windSpeedX) ? velocityX + drag : velocityX - drag;
-		velocityY = (velocityY <= windSpeedY) ? velocityY + drag : velocityY - drag;
+		//playerX = (playerX >= ww) ? ww - drag : (playerX <= 0) ? 0 + drag : playerX + velocityX;
+		//playerY = (playerY >= wh-230) ? wh-230-drag : (playerY <= 0) ? 0 + drag : playerY + velocityY;
+		//velocityX = (velocityX <= windSpeedX) ? velocityX + drag : velocityX - drag;
+		//velocityY = (velocityY <= windSpeedY) ? velocityY + drag : velocityY - drag;
 
-		windSpeedX += CP_Random_RangeFloat(-0.5, 0.5);
-		windSpeedY += CP_Random_RangeFloat(-0.05, 0.05);
+		//COMMENTING OUT THE WINDSPEED
+		//WILL REIMPLEMENT LATER
+		/*windSpeedX += CP_Random_RangeFloat(-0.5, 0.5);
+		windSpeedY += CP_Random_RangeFloat(-0.05, 0.05);*/
 
 		CP_Settings_TextSize(50.0f);
 
-		int len = snprintf(NULL, 0, "%.2f", windSpeedX);
+		/*int len = snprintf(NULL, 0, "%.2f", windSpeedX);
 		char* result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", windSpeedX);
 		CP_Font_DrawText(result, ww/2, wh*2/6);
 		free(result);
 
-		len = snprintf(NULL, 0, "%.2f", velocityX);
-		result = malloc(len + 1);
+		int len = snprintf(NULL, 0, "%.2f", velocityX);
+		char* result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", velocityX);
 		CP_Font_DrawText(result, ww / 2, wh * 3 / 6);
 		free(result);
@@ -142,8 +155,8 @@ void game_update(void) {
 		len = snprintf(NULL, 0, "%.2f", velocityY);
 		result = malloc(len + 1);
 		snprintf(result, len + 1, "%.2f", velocityY);
-		CP_Font_DrawText(result, ww / 2, wh * 5 / 6);
-		free(result);
+		CP_Font_DrawText(result, ww / 2, wh * 4 / 6);
+		free(result);*/
 
 		//CP_Font_DrawText(windSpeedY, ww / 2, wh * 5 / 8);
 
