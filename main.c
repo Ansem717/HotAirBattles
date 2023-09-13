@@ -35,6 +35,8 @@ Obstacles - Birds, Planes / Helicopters, Kites, Alien ships - all of them functi
 Getting Hit - while I want there to be a way for players to skillfully save themselves, I think that's out of scope. For now, it's 3 strikes.
 */
 
+CP_Font bubbleLetters;
+
 int paused = 0;
 int pauseMenuShowing = 0;
 float x = 0;
@@ -43,6 +45,7 @@ float y = 0;
 void game_init(void)
 {
 	CP_System_Fullscreen();
+	bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
 }
 
 void unpause() {
@@ -85,9 +88,13 @@ void game_update(void)
 
 			CP_Settings_Fill(CP_Color_Create(0, 0, 0, 255));
 			CP_Settings_Stroke(CP_Color_Create(0, 0, 0, 255));
-			CP_Settings_StrokeWeight(2.0);
+			CP_Settings_StrokeWeight(2.0f);
+			CP_Settings_TextSize(bh / 2);
 
-			CP_Font_DrawText("Quit", ww / 3 + 100, (wh / 3) * 2 - 150);
+			CP_Font_Set(bubbleLetters);
+			CP_Font_DrawText("PAUSED", ww / 2, (wh / 4) * 2 + marginBottom);
+			CP_Font_DrawText("Quit", ww / 2 - bw*3/5 - spacing, (wh / 4) * 3 - marginBottom + bh*2/3);
+			CP_Font_DrawText("Settings", ww / 2 - bw*3/5 - spacing, (wh / 4) * 3 - marginBottom + bh*2/3);
 			pauseMenuShowing = 1;
 		}
 	}
@@ -120,7 +127,7 @@ void game_update(void)
 
 void game_exit(void)
 {
-
+	//CP_Font_Free(bubbleLetters);
 }
 
 int main(void)
