@@ -1,6 +1,7 @@
 # Digipen Instructor Said
 /.vs
 /x64
+*.user
 
 # Prerequisites
 *.d

@@ -58,13 +58,36 @@ void game_update(void)
 			if (CP_Input_KeyReleased(KEY_ESCAPE)) {
 				unpause();
 			}
+			if (CP_Input_KeyReleased(KEY_SPACE)) {
+				CP_Engine_Terminate();
+			}
 		}
 		else {
-			CP_Settings_Fill(CP_Color_Create(100, 100, 100, 100));
 			float ww = (float)CP_System_GetWindowWidth();
 			float wh = (float)CP_System_GetWindowHeight();
+			
+			CP_Settings_Fill(CP_Color_Create(255, 255, 255, 50));
 			CP_Graphics_DrawRect(0, 0, ww, wh);
-			CP_Graphics_DrawRect(ww / 3, wh / 3, ww / 3, wh / 3);
+			CP_Settings_Fill(CP_Color_Create(50, 50, 50, 50));
+			CP_Graphics_DrawRect(ww / 4, wh / 4, ww / 2, wh / 2);
+
+			float bw = (ww * 4 / 39); //button width.
+			float bh = (bw / 2); //button height
+			float spacing = (bw / 2); //gap between both buttons
+			float marginBottom = bh * 2; //gap between button and bottom border
+			//In hopes to remove "MAGIC" numbers, everything is calculated based on the fullscreen window. 
+			//This means I'm doing a lot of awkward math, but hypothetically everything should lineup on all monitors
+			//I'm also reusing certain values in different variables (MarginBottom is equal to Button Width) because
+			//   the variable acts as a named alias. The fact that it's equal to button width is coincidence.
+
+			CP_Graphics_DrawRect(ww / 2 - bw - spacing, (wh / 4) * 3 - marginBottom, bw, bh);
+			CP_Graphics_DrawRect(ww / 2 + spacing, (wh / 4) * 3 - marginBottom, bw, bh);
+
+			CP_Settings_Fill(CP_Color_Create(0, 0, 0, 255));
+			CP_Settings_Stroke(CP_Color_Create(0, 0, 0, 255));
+			CP_Settings_StrokeWeight(2.0);
+
+			CP_Font_DrawText("Quit", ww / 3 + 100, (wh / 3) * 2 - 150);
 			pauseMenuShowing = 1;
 		}
 	}
