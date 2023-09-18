@@ -1,3 +1,2 @@
-# CProcessing Template
-
-This is the template repository for CProcessing-based projects. You can find the full CProcessing repository at https://github.com/DigiPen-Faculty/CProcessing.
+# HotAirBattles
+A small independent game to practice concepts in CProcessing - used for Assignment 2 in GAM-100
