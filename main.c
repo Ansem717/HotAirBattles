@@ -90,13 +90,45 @@ TextureRect CLOUD_TEXTURE_POSITIONS[] = {
 	{210, 120, 330, 190, 530, 310}	//12
 };
 
+void drawPlayer(void) {
+	CP_Settings_Fill(BLACK);
+	CP_Settings_NoStroke();
+
+	float bodyW = 25;
+	float bodyH = 90;
+	float wingXOffset = 5;
+	float wingW = 40;
+	float wingYOffset = 15;
+	float wingH = 30;
+
+	float centerX = ww / 2;
+	float centerY = wh / 2;
+
+	CP_Graphics_DrawEllipse(centerX, centerY, bodyW, bodyH);
+
+	CP_Vector v1 = CP_Vector_Set(centerX - wingXOffset,			centerY + wingYOffset);
+	CP_Vector v2 = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset);
+	CP_Vector v3 = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset - wingH/2);
+	CP_Vector v4 = CP_Vector_Set(centerX - wingXOffset,			centerY + wingYOffset - wingH);
+
+	CP_Graphics_DrawQuad(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v4.x, v4.y);
+
+	CP_Vector v1 = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset);
+	CP_Vector v2 = CP_Vector_Set(centerX + wingXOffset - wingW, centerY + wingYOffset);
+	CP_Vector v3 = CP_Vector_Set(centerX + wingXOffset - wingW, centerY + wingYOffset - wingH / 2);
+	CP_Vector v4 = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset - wingH);
+
+	CP_Graphics_DrawQuad(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v4.x, v4.y);
+
+}
+
 void game_init(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
 
 	CP_System_Fullscreen();
 	//bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
-	hotAirBalloonIMG = CP_Image_Load("Assets/hot-air-balloon.png");
+	//hotAirBalloonIMG = CP_Image_Load("Assets/hot-air-balloon.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
@@ -109,7 +141,7 @@ void game_init(void) {
 	}
 
 	CP_Settings_Fill(BLACK);
-	CP_Font_Set(bubbleLetters);
+	//CP_Font_Set(bubbleLetters);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 }
 
@@ -161,23 +193,23 @@ void game_update(void) {
 			CP_Image_DrawSubImage(cloudTexture, currentCloud.x + globalX, currentCloud.y + globalY, currentCloud.size * currentTexture.w, currentCloud.size * currentTexture.h, currentTexture.x0, currentTexture.y0, currentTexture.x1, currentTexture.y1, 255);
 		}
 
-		//DRAW DEBUGGING LINES
-		CP_Settings_Stroke(BLACK);
+		//DRAW DEBUGGING SQUARE
+		CP_Settings_NoFill();
 		float x1 = -ww / 2;
-		float x2 = ww + ww / 2;
+		float w = ww * 2;
 		float y1 = -wh;
-		float y2 = wh / 2;
-		CP_Graphics_DrawLine(x1 + globalX, y1 + globalY, x1 + globalX, y2 + globalY);
-		CP_Graphics_DrawLine(x2 + globalX, y1 + globalY, x2 + globalX, y2 + globalY);
-		CP_Graphics_DrawLine(x1 + globalX, y1 + globalY, x2 + globalX, y1 + globalY);
-		CP_Graphics_DrawLine(x1 + globalX, y2 + globalY, x2 + globalX, y2 + globalY);
-
+		float h = wh * 1.5;
+		CP_Graphics_DrawRect(x1 + globalX, y1 + globalY, w, h);
+		CP_Settings_Fill(BLACK);
 
 		/*************\
 		| DRAW PLAYER |
 		\*************/
-		CP_Image_Draw(hotAirBalloonIMG, ww / 2, wh / 2 - 20, 100, 200, 255);
+		drawPlayer();
 
+		/*********************************\
+		| CALCULATE VELOCITY AND POSITION |
+		\*********************************/
 		velocityX = (velocityX < 0) ? velocityX + drag : velocityX - drag;
 		velocityX = (velocityX > velocityXCap) ? velocityXCap : (velocityX < -velocityXCap) ? -velocityXCap : velocityX;
 		velocityY = (velocityY < 0) ? velocityY + drag : velocityY - drag;
@@ -186,7 +218,12 @@ void game_update(void) {
 		//Global X is positive for right, negative for left
 		//Global Y is positive for DOWN, negative for up
 		globalX += -velocityX;
-		globalY = (globalY - velocityY <= 0) ? 0 : globalY - velocityY;
+		if (globalY - velocityY <= 0) {
+			globalY = 0;
+			velocityY = 0;
+		} else {
+			globalY -= velocityY;
+		}
 
 		/***********\
 		| DRAW TEXT |
