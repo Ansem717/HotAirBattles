@@ -1,4 +1,4 @@
-//---------------------------------------------------------
+﻿//---------------------------------------------------------
 // file:	main.c
 // author:	Andy Malik
 // email:	me@andymalik.com
@@ -9,12 +9,14 @@
 // documentation link:
 // https://github.com/DigiPen-Faculty/CProcessing/wiki
 //
-// Copyright � 2020 DigiPen, All rights reserved.
+// Copyright © 2020 DigiPen, All rights reserved.
 //---------------------------------------------------------
 
 #include "cprocessing.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#define PI 3.141592653589793238462643383279520
 
 /*
 Ok so, the plan is to make a hot-air-balloon game, that's half exploration half action
@@ -37,7 +39,6 @@ Obstacles - Birds, Planes / Helicopters, Kites, Alien ships - all of them functi
 Getting Hit - while I want there to be a way for players to skillfully save themselves, I think that's out of scope. For now, it's 3 strikes.
 */
 
-CP_Font bubbleLetters;
 CP_Image cloudTexture;
 CP_Image hotAirBalloonIMG;
 
@@ -46,14 +47,20 @@ CP_Color BLACK;
 int paused = 0;
 int pauseMenuShowing = 0;
 
-float globalX, globalY, velocityX, velocityY;
-float velocityXCap = 8;
-float velocityYCap = 5;
+float globalX, globalY;
+
+CP_Vector directionVector;
+float rotationAngle;
+float rotationIncrement = .03f;
+float rotationCap = 0.06f;
+
+float speed;
+float speedCap = 20;
+float speedIncrement = 0.2f;
+float drag = 0.07f;
+float windSpeedX, windSpeedY;
 
 float ww, wh;
-float drag = 0.05f;
-float velocityIncrement = 0.1f;
-float windSpeedX, windSpeedY;
 
 typedef struct {
 	float size;
@@ -104,31 +111,39 @@ void drawPlayer(void) {
 	float centerX = ww / 2;
 	float centerY = wh / 2;
 
-	CP_Graphics_DrawEllipse(centerX, centerY, bodyW, bodyH);
+	float bodyAngle = acos(directionVector.y) * 180 / PI;
+	bodyAngle = (directionVector.x < 0) ? bodyAngle : -bodyAngle;
+	CP_Graphics_DrawEllipseAdvanced(centerX, centerY, bodyW, bodyH, bodyAngle);
 
-	CP_Vector v1 = CP_Vector_Set(centerX - wingXOffset,			centerY + wingYOffset);
-	CP_Vector v2 = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset);
-	CP_Vector v3 = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset - wingH/2);
-	CP_Vector v4 = CP_Vector_Set(centerX - wingXOffset,			centerY + wingYOffset - wingH);
+	CP_Vector v1L = CP_Vector_Set(centerX - wingXOffset * directionVector.x,		   centerY + wingYOffset);
+	CP_Vector v2L = CP_Vector_Set(centerX - (wingXOffset - wingW) * directionVector.x, centerY + wingYOffset);
+	CP_Vector v3L = CP_Vector_Set(centerX - (wingXOffset - wingW) * directionVector.x, centerY + wingYOffset - wingH / 2);
+	CP_Vector v4L = CP_Vector_Set(centerX - wingXOffset * directionVector.x,		   centerY + wingYOffset - wingH);
 
-	CP_Graphics_DrawQuad(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v4.x, v4.y);
+	CP_Settings_Fill(CP_Color_Create(255,255,255,255));
+	CP_Graphics_DrawQuadAdvanced(v1L.x, v1L.y, v2L.x, v2L.y, v3L.x, v3L.y, v4L.x, v4L.y, bodyAngle);
+	CP_Settings_Fill(BLACK);
+	
+	CP_Vector v1R = CP_Vector_Set(centerX + wingXOffset,		 centerY + wingYOffset);
+	CP_Vector v2R = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset);
+	CP_Vector v3R = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset - wingH / 2);
+	CP_Vector v4R = CP_Vector_Set(centerX + wingXOffset,		 centerY + wingYOffset - wingH);
 
-	CP_Vector v1 = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset);
-	CP_Vector v2 = CP_Vector_Set(centerX + wingXOffset - wingW, centerY + wingYOffset);
-	CP_Vector v3 = CP_Vector_Set(centerX + wingXOffset - wingW, centerY + wingYOffset - wingH / 2);
-	CP_Vector v4 = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset - wingH);
+	//CP_Graphics_DrawQuadAdvanced(v1R.x, v1R.y, v2R.x, v2R.y, v3R.x, v3R.y, v4R.x, v4R.y, bodyAngle);
 
-	CP_Graphics_DrawQuad(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v4.x, v4.y);
-
+	CP_Settings_Stroke(CP_Color_Create(255,0,0,255));
+	CP_Settings_StrokeWeight(4);
+	CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
+	CP_Settings_StrokeWeight(2);
+	CP_Settings_Stroke(BLACK);
 }
 
 void game_init(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
+	directionVector = CP_Vector_Set(0, 1);
 
 	CP_System_Fullscreen();
-	//bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
-	//hotAirBalloonIMG = CP_Image_Load("Assets/hot-air-balloon.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
@@ -141,7 +156,6 @@ void game_init(void) {
 	}
 
 	CP_Settings_Fill(BLACK);
-	//CP_Font_Set(bubbleLetters);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 }
 
@@ -163,7 +177,6 @@ void game_update(void) {
 			CP_Graphics_DrawRect(ww / 4, wh / 4, ww / 2, wh / 2);
 
 			CP_Settings_Fill(CP_Color_Create(255, 255, 255, 255));
-			CP_Font_Set(bubbleLetters);
 			CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
 			CP_Settings_TextSize(70.0f);
@@ -198,7 +211,7 @@ void game_update(void) {
 		float x1 = -ww / 2;
 		float w = ww * 2;
 		float y1 = -wh;
-		float h = wh * 1.5;
+		float h = wh * 1.5f;
 		CP_Graphics_DrawRect(x1 + globalX, y1 + globalY, w, h);
 		CP_Settings_Fill(BLACK);
 
@@ -210,20 +223,25 @@ void game_update(void) {
 		/*********************************\
 		| CALCULATE VELOCITY AND POSITION |
 		\*********************************/
-		velocityX = (velocityX < 0) ? velocityX + drag : velocityX - drag;
-		velocityX = (velocityX > velocityXCap) ? velocityXCap : (velocityX < -velocityXCap) ? -velocityXCap : velocityX;
-		velocityY = (velocityY < 0) ? velocityY + drag : velocityY - drag;
-		velocityY = (velocityY > velocityYCap) ? velocityYCap : (velocityY < -velocityYCap) ? -velocityYCap : velocityY;
+
+		//x2 = cosAx1 − sinAy1
+		//y2 = sinAx1 + cosAy1
+
+		double newVX = cos(rotationAngle) * directionVector.x - sin(rotationAngle) * directionVector.y;
+		double newVY = sin(rotationAngle) * directionVector.x + cos(rotationAngle) * directionVector.y;
+
+		directionVector.x = newVX;
+		directionVector.y = newVY;
+
+		speed = (speed < 0) ? speed + drag : speed - drag;
+		speed = (speed > speedCap) ? speedCap : (speed < -speedCap) ? -speedCap : speed;
+
+		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
 		//Global X is positive for right, negative for left
 		//Global Y is positive for DOWN, negative for up
-		globalX += -velocityX;
-		if (globalY - velocityY <= 0) {
-			globalY = 0;
-			velocityY = 0;
-		} else {
-			globalY -= velocityY;
-		}
+		globalX += directionVector.x * speed;
+		globalY += directionVector.y * speed;
 
 		/***********\
 		| DRAW TEXT |
@@ -237,30 +255,33 @@ void game_update(void) {
 		sprintf_s(buffer, _countof(buffer), "Global Y position: %.0f", globalY);
 		CP_Font_DrawText(buffer, 200, 100);
 
-		sprintf_s(buffer, _countof(buffer), "Velocity X: %.2f", velocityX);
+		sprintf_s(buffer, _countof(buffer), "Speed: %.2f", speed);
 		CP_Font_DrawText(buffer, 200, 150);
 
-		sprintf_s(buffer, _countof(buffer), "Velocity Y: %.2f", velocityY);
+		sprintf_s(buffer, _countof(buffer), "Direction: %.2f", acos(directionVector.y));
 		CP_Font_DrawText(buffer, 200, 200);
+
+		sprintf_s(buffer, _countof(buffer), "Body Direction: %.2f", acos(directionVector.y) * 180 / PI);
+		CP_Font_DrawText(buffer, 200, 250);
 
 		/*********\
 		| CONTROL |
 		\*********/
 
 		if (CP_Input_KeyDown(KEY_W) || CP_Input_KeyDown(KEY_UP)) {
-			velocityY -= velocityIncrement;
+			speed += speedIncrement;
 		} 
 		
 		if (CP_Input_KeyDown(KEY_S) || CP_Input_KeyDown(KEY_DOWN)) {
-			velocityY += velocityIncrement;
+			speed -= speedIncrement;
 		}
 
 		if (CP_Input_KeyDown(KEY_A) || CP_Input_KeyDown(KEY_LEFT)) {
-			velocityX -= velocityIncrement;
-		}
-		
-		if (CP_Input_KeyDown(KEY_D) || CP_Input_KeyDown(KEY_RIGHT)) {
-			velocityX += velocityIncrement;
+			rotationAngle -= rotationIncrement;
+		} else if (CP_Input_KeyDown(KEY_D) || CP_Input_KeyDown(KEY_RIGHT)) {
+			rotationAngle += rotationIncrement;
+		} else {
+			rotationAngle = 0;
 		}
 
 		/************\
@@ -274,7 +295,7 @@ void game_update(void) {
 
 
 void game_exit(void) {
-	//CP_Font_Free(bubbleLetters);
+	
 }
 
 int main(void) {
