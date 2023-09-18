@@ -94,7 +94,7 @@ void game_init(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
 
 	CP_System_Fullscreen();
-	bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
+	//bubbleLetters = CP_Font_Load("Assets/fonts/AlloyInk-nRLyO.ttf");
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	hotAirBalloonIMG = CP_Image_Load("Assets/hot-air-balloon.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
@@ -188,33 +188,23 @@ void game_update(void) {
 		globalX += -velocityX;
 		globalY = (globalY - velocityY <= 0) ? 0 : globalY - velocityY;
 
+		/***********\
+		| DRAW TEXT |
+		\***********/
+		CP_Settings_TextSize(40.0f);
 
-		CP_Settings_TextSize(50.0f);
+		char buffer[50] = { 0 };
+		sprintf_s(buffer, _countof(buffer), "Global X position: %.0f", -globalX);
+		CP_Font_DrawText(buffer, 200, 50);
 
-		int len = snprintf(NULL, 0, "%.0f", globalX);
-		char* result = malloc(len + 1);
-		snprintf(result, len + 1, "%.0f", globalX);
-		CP_Font_DrawText(result, ww/2 - 300, 100);
-		free(result);
+		sprintf_s(buffer, _countof(buffer), "Global Y position: %.0f", globalY);
+		CP_Font_DrawText(buffer, 200, 100);
 
-		len = snprintf(NULL, 0, "%.2f", velocityX);
-		result = malloc(len + 1);
-		snprintf(result, len + 1, "%.2f", velocityX);
-		CP_Font_DrawText(result, ww / 2, 100);
-		free(result);
+		sprintf_s(buffer, _countof(buffer), "Velocity X: %.2f", velocityX);
+		CP_Font_DrawText(buffer, 200, 150);
 
-		len = snprintf(NULL, 0, "%.0f", globalY);
-		result = malloc(len + 1);
-		snprintf(result, len + 1, "%.0f", globalY);
-		CP_Font_DrawText(result, ww / 2 - 150, 100);
-		free(result);
-
-		len = snprintf(NULL, 0, "%.2f", velocityY);
-		result = malloc(len + 1);
-		snprintf(result, len + 1, "%.2f", velocityY);
-		CP_Font_DrawText(result, ww / 2 + 150, 100);
-		free(result);
-
+		sprintf_s(buffer, _countof(buffer), "Velocity Y: %.2f", velocityY);
+		CP_Font_DrawText(buffer, 200, 200);
 
 		/*********\
 		| CONTROL |
