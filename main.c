@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define PI 3.141592653589793238462643383279520
+#define PI 3.14159265358979323846264
 
 /*
 Ok so, the plan is to make a hot-air-balloon game, that's half exploration half action
@@ -98,6 +98,20 @@ TextureRect CLOUD_TEXTURE_POSITIONS[] = {
 	{210, 120, 330, 190, 530, 310}	//12
 };
 
+typedef struct {
+	float north;
+	float south;
+	float east;
+	float west;
+	float width;
+	float height;
+} Bounds;
+
+Bounds bounds;
+
+/* * * * * * *
+* DRAW PLAYER *
+ * * * * * * */
 void drawPlayer(void) {
 	CP_Settings_Fill(BLACK);
 	CP_Settings_NoStroke();
@@ -140,18 +154,27 @@ void game_init(void) {
 	CP_System_Fullscreen();
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
+	
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
 
+	bounds.north = -wh;
+	bounds.east = 2*ww;
+	bounds.south = 2*wh;
+	bounds.west = -ww;
+	bounds.width = bounds.east - bounds.west;
+	bounds.height = bounds.south - bounds.north;
+
 	for (int i = 0; i < CLOUD_ARR_SIZE; i++) {
 		activeClouds[i].size = 1;
-		activeClouds[i].x = CP_Random_RangeFloat(-ww/2, ww+ ww/2);
-		activeClouds[i].y = CP_Random_RangeFloat(-wh, wh / 2);
+		activeClouds[i].x = CP_Random_RangeFloat(bounds.west + ww/2, bounds.east - ww/2 - 200);
+		activeClouds[i].y = CP_Random_RangeFloat(bounds.north + wh/2, bounds.south - wh/2 - 100);
 		activeClouds[i].img_id = CP_Random_RangeInt(0, 12);
 	}
 
 	CP_Settings_Fill(BLACK);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+	CP_Settings_ImageMode(CP_POSITION_CORNER);
 }
 
 void game_update(void) {
@@ -186,10 +209,6 @@ void game_update(void) {
 	} else {
 		// DRAW BACKGROUND (Sky)
 		CP_Graphics_ClearBackground(CP_Color_Create(32, 192, 255, 255));
-
-		// DRAW GRASS
-		CP_Settings_Fill(CP_Color_Create(72, 255, 72, 255));
-		CP_Graphics_DrawRect(0, wh * 0.80f + globalY, ww, wh / 4);
 		CP_Settings_Fill(BLACK);
 
 		/*************\
@@ -203,11 +222,7 @@ void game_update(void) {
 
 		//DRAW DEBUGGING SQUARE
 		CP_Settings_NoFill();
-		float x1 = -ww / 2;
-		float w = ww * 2;
-		float y1 = -wh;
-		float h = wh * 1.5f;
-		CP_Graphics_DrawRect(x1 + globalX, y1 + globalY, w, h);
+		CP_Graphics_DrawRect(bounds.west + globalX, bounds.north + globalY, bounds.width, bounds.height);
 		CP_Settings_Fill(BLACK);
 
 		/*************\
@@ -232,12 +247,6 @@ void game_update(void) {
 		speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
 		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
-		rotationIncrement = 3/(20*speed);
-		//Minimum speed is 5; 3/(20*5) = 3/100 = 0.03 :: desired maximum rotation speed when slow
-		//Maximum speed is 20; 3/(20*20) = 3/400 = 0.0075 :: mimimum rotation speed when fast
-
-
-
 		/*
 		The statements above are known as Ternary Operators:
 
@@ -255,12 +264,33 @@ void game_update(void) {
 			speed = speed - drag;
 		}
 
+		Notice how the speedCap and rotationCap lines are if-else-if-else combinations.
+
+		The benefit is simplifying line usage for simple conditions like this. 
+		However, 
+			it can be confusing to many people, 
+			it could look unpleasant if it grows too large, 
+			it's only useful for simple conditions,
+			and it can be hard to make changes.
+		There are more negatives than positives, but I really enjoy the compactness.
 		*/
 
-		//Global X is positive for right, negative for left
-		//Global Y is positive for DOWN, negative for up
+		rotationIncrement = 3 / (20 * speed);
+		//Minimum speed is 5; 3/(20*5) = 3/100 = 0.03 :: desired maximum rotation speed when slow
+		//Maximum speed is 20; 3/(20*20) = 3/400 = 0.0075 :: mimimum rotation speed when fast
+		//It's inherent in our brains that items at faster speeds will turn slower.
+
 		globalX += directionVector.x * speed;
 		globalY += directionVector.y * speed;
+
+		if (globalX > bounds.width/2 || globalX < -bounds.width/2) {
+			//if we're out of bounds, teleport to the opposite boundary.
+			globalX *= -1;
+		}
+
+		if (globalY > bounds.height / 2 || globalY < -bounds.height / 2) {
+			globalY *= -1;
+		}
 
 		/***********\
 		| DRAW TEXT |
