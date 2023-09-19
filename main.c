@@ -70,7 +70,7 @@ typedef struct {
 	int img_id; //0 to 12 variations
 } Cloud;
 
-int CLOUD_ARR_SIZE = 15;
+int CLOUD_ARR_SIZE = 20;
 Cloud* activeClouds;
 
 typedef struct {
@@ -147,6 +147,20 @@ void drawPlayer(void) {
 	CP_Settings_Stroke(BLACK);
 }
 
+/* * * * * * * * * * * * *
+* RANDOMLY CREATE CLOUDS *
+* * * * * * * * * * * * */
+void createClouds(void) {
+	//This for loop simply assigns random positions and images to the clouds array.
+	//It is recalled every time the player warps through the screen.
+	for (int i = 0; i < CLOUD_ARR_SIZE; i++) {
+		activeClouds[i].size = 1;
+		activeClouds[i].x = CP_Random_RangeFloat(bounds.west + ww / 2, bounds.east - ww / 2 - 200);
+		activeClouds[i].y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
+		activeClouds[i].img_id = CP_Random_RangeInt(0, 12);
+	}
+}
+
 void game_init(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
 	directionVector = CP_Vector_Set(0, 1);
@@ -165,12 +179,7 @@ void game_init(void) {
 	bounds.width = bounds.east - bounds.west;
 	bounds.height = bounds.south - bounds.north;
 
-	for (int i = 0; i < CLOUD_ARR_SIZE; i++) {
-		activeClouds[i].size = 1;
-		activeClouds[i].x = CP_Random_RangeFloat(bounds.west + ww/2, bounds.east - ww/2 - 200);
-		activeClouds[i].y = CP_Random_RangeFloat(bounds.north + wh/2, bounds.south - wh/2 - 100);
-		activeClouds[i].img_id = CP_Random_RangeInt(0, 12);
-	}
+	createClouds();
 
 	CP_Settings_Fill(BLACK);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
@@ -286,10 +295,12 @@ void game_update(void) {
 		if (globalX > bounds.width/2 || globalX < -bounds.width/2) {
 			//if we're out of bounds, teleport to the opposite boundary.
 			globalX *= -1;
+			createClouds(); //no clouds are visible, great time to randomize them!
 		}
 
 		if (globalY > bounds.height / 2 || globalY < -bounds.height / 2) {
 			globalY *= -1;
+			createClouds();
 		}
 
 		/***********\
