@@ -51,13 +51,14 @@ float globalX, globalY;
 
 CP_Vector directionVector;
 float rotationAngle;
-float rotationIncrement = .03f;
+float rotationIncrement = .02f;
 float rotationCap = 0.06f;
 
 float speed;
 float speedCap = 20;
-float speedIncrement = 0.2f;
-float drag = 0.07f;
+float speedMin = 5; //The plane is always moving!
+float speedIncrement = 0.25f;
+float drag = 0.1f;
 float windSpeedX, windSpeedY;
 
 float ww, wh;
@@ -103,10 +104,10 @@ void drawPlayer(void) {
 
 	float bodyW = 25;
 	float bodyH = 90;
-	float wingXOffset = 5;
-	float wingW = 40;
-	float wingYOffset = 15;
-	float wingH = 30;
+	float wingXOffset = 0;
+	float wingW = 70;
+	float wingYOffset = 9;
+	float wingH = 50;
 
 	float centerX = ww / 2;
 	float centerY = wh / 2;
@@ -114,26 +115,37 @@ void drawPlayer(void) {
 	float bodyAngle = acos(directionVector.y) * 180 / PI;
 	bodyAngle = (directionVector.x < 0) ? bodyAngle : -bodyAngle;
 	CP_Graphics_DrawEllipseAdvanced(centerX, centerY, bodyW, bodyH, bodyAngle);
+	CP_Graphics_DrawTriangleAdvanced(
+		centerX - wingW / 2,				//x1
+		centerY + wingH / 2 - wingYOffset,	//y1
+		centerX,							//x2
+		centerY - wingH / 2 - wingYOffset,	//y2
+		centerX + wingW / 2,				//x3
+		centerY + wingH / 2 - wingYOffset,	//y3
+		bodyAngle							//Rotation
+	);
 
-	CP_Vector v1L = CP_Vector_Set(centerX - wingXOffset * directionVector.x,		   centerY + wingYOffset);
-	CP_Vector v2L = CP_Vector_Set(centerX - (wingXOffset - wingW) * directionVector.x, centerY + wingYOffset);
-	CP_Vector v3L = CP_Vector_Set(centerX - (wingXOffset - wingW) * directionVector.x, centerY + wingYOffset - wingH / 2);
-	CP_Vector v4L = CP_Vector_Set(centerX - wingXOffset * directionVector.x,		   centerY + wingYOffset - wingH);
+	//CP_Vector vectors[8] = {0};
 
-	CP_Settings_Fill(CP_Color_Create(255,255,255,255));
-	CP_Graphics_DrawQuadAdvanced(v1L.x, v1L.y, v2L.x, v2L.y, v3L.x, v3L.y, v4L.x, v4L.y, bodyAngle);
-	CP_Settings_Fill(BLACK);
-	
-	CP_Vector v1R = CP_Vector_Set(centerX + wingXOffset,		 centerY + wingYOffset);
-	CP_Vector v2R = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset);
-	CP_Vector v3R = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset - wingH / 2);
-	CP_Vector v4R = CP_Vector_Set(centerX + wingXOffset,		 centerY + wingYOffset - wingH);
+	//vectors[0] = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset);
+	//vectors[1] = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset - wingH / 2);
+	//vectors[2] = CP_Vector_Set(centerX - wingXOffset, centerY + wingYOffset - wingH);
+	//vectors[3] = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset - wingH);
+	//vectors[4] = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset - wingH / 2);
+	//vectors[5] = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset);
+	//vectors[6] = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset);
+	//vectors[7] = CP_Vector_Set(centerX - wingXOffset, centerY + wingYOffset);
 
-	//CP_Graphics_DrawQuadAdvanced(v1R.x, v1R.y, v2R.x, v2R.y, v3R.x, v3R.y, v4R.x, v4R.y, bodyAngle);
+	//CP_Graphics_BeginShape();
+	//for (int i = 0; i < 8; i++) {
+	//	CP_Graphics_AddVertex(vectors[i].x, vectors[i].y);
+	//}
+	//CP_Graphics_EndShape();
+
 
 	CP_Settings_Stroke(CP_Color_Create(255,0,0,255));
 	CP_Settings_StrokeWeight(4);
-	CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
+	//CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
 	CP_Settings_StrokeWeight(2);
 	CP_Settings_Stroke(BLACK);
 }
@@ -234,9 +246,27 @@ void game_update(void) {
 		directionVector.y = newVY;
 
 		speed = (speed < 0) ? speed + drag : speed - drag;
-		speed = (speed > speedCap) ? speedCap : (speed < -speedCap) ? -speedCap : speed;
-
+		speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
 		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
+
+		/*
+		The statements above are known as Ternary Operators:
+
+		VARIABLE = (CONDITION) ? [true value] : [false value];
+
+		We can set the value of a variable based on a condition all in one line.
+
+		Looking at this line: 
+		speed = (speed < 0) ? speed + drag : speed - drag;
+
+		This is equal to:
+		if (speed < 0) {
+			speed = speed + drag;
+		} else {
+			speed = speed - drag;
+		}
+
+		*/
 
 		//Global X is positive for right, negative for left
 		//Global Y is positive for DOWN, negative for up
@@ -255,14 +285,11 @@ void game_update(void) {
 		sprintf_s(buffer, _countof(buffer), "Global Y position: %.0f", globalY);
 		CP_Font_DrawText(buffer, 200, 100);
 
-		sprintf_s(buffer, _countof(buffer), "Speed: %.2f", speed);
+		sprintf_s(buffer, _countof(buffer), "Speed: %.0f", speed);
 		CP_Font_DrawText(buffer, 200, 150);
 
-		sprintf_s(buffer, _countof(buffer), "Direction: %.2f", acos(directionVector.y));
+		sprintf_s(buffer, _countof(buffer), "Direction: %.0f", acos(directionVector.y) * 180 / PI);
 		CP_Font_DrawText(buffer, 200, 200);
-
-		sprintf_s(buffer, _countof(buffer), "Body Direction: %.2f", acos(directionVector.y) * 180 / PI);
-		CP_Font_DrawText(buffer, 200, 250);
 
 		/*********\
 		| CONTROL |
