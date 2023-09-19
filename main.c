@@ -51,7 +51,7 @@ float globalX, globalY;
 
 CP_Vector directionVector;
 float rotationAngle;
-float rotationIncrement = .02f;
+float rotationIncrement; //the increment changes based on speed - the faster you are, the harder it is to turn.
 float rotationCap = 0.06f;
 
 float speed;
@@ -102,9 +102,10 @@ void drawPlayer(void) {
 	CP_Settings_Fill(BLACK);
 	CP_Settings_NoStroke();
 
-	float bodyW = 25;
-	float bodyH = 90;
-	float wingXOffset = 0;
+	float bodyW = 30;
+	float bodyH = 70;
+	float bodyOffsetMult = 10;
+	CP_Vector bodyOffsetVector = CP_Vector_Set(bodyOffsetMult * directionVector.x, bodyOffsetMult * directionVector.y);
 	float wingW = 70;
 	float wingYOffset = 9;
 	float wingH = 50;
@@ -114,7 +115,7 @@ void drawPlayer(void) {
 
 	float bodyAngle = acos(directionVector.y) * 180 / PI;
 	bodyAngle = (directionVector.x < 0) ? bodyAngle : -bodyAngle;
-	CP_Graphics_DrawEllipseAdvanced(centerX, centerY, bodyW, bodyH, bodyAngle);
+	CP_Graphics_DrawEllipseAdvanced(centerX - bodyOffsetVector.x, centerY - bodyOffsetVector.y, bodyW, bodyH, bodyAngle);
 	CP_Graphics_DrawTriangleAdvanced(
 		centerX - wingW / 2,				//x1
 		centerY + wingH / 2 - wingYOffset,	//y1
@@ -125,26 +126,8 @@ void drawPlayer(void) {
 		bodyAngle							//Rotation
 	);
 
-	//CP_Vector vectors[8] = {0};
-
-	//vectors[0] = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset);
-	//vectors[1] = CP_Vector_Set(centerX - wingXOffset - wingW, centerY + wingYOffset - wingH / 2);
-	//vectors[2] = CP_Vector_Set(centerX - wingXOffset, centerY + wingYOffset - wingH);
-	//vectors[3] = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset - wingH);
-	//vectors[4] = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset - wingH / 2);
-	//vectors[5] = CP_Vector_Set(centerX + wingXOffset + wingW, centerY + wingYOffset);
-	//vectors[6] = CP_Vector_Set(centerX + wingXOffset, centerY + wingYOffset);
-	//vectors[7] = CP_Vector_Set(centerX - wingXOffset, centerY + wingYOffset);
-
-	//CP_Graphics_BeginShape();
-	//for (int i = 0; i < 8; i++) {
-	//	CP_Graphics_AddVertex(vectors[i].x, vectors[i].y);
-	//}
-	//CP_Graphics_EndShape();
-
-
 	CP_Settings_Stroke(CP_Color_Create(255,0,0,255));
-	CP_Settings_StrokeWeight(4);
+	CP_Settings_StrokeWeight(3);
 	//CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
 	CP_Settings_StrokeWeight(2);
 	CP_Settings_Stroke(BLACK);
@@ -249,6 +232,12 @@ void game_update(void) {
 		speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
 		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
+		rotationIncrement = 3/(20*speed);
+		//Minimum speed is 5; 3/(20*5) = 3/100 = 0.03 :: desired maximum rotation speed when slow
+		//Maximum speed is 20; 3/(20*20) = 3/400 = 0.0075 :: mimimum rotation speed when fast
+
+
+
 		/*
 		The statements above are known as Ternary Operators:
 
@@ -290,6 +279,9 @@ void game_update(void) {
 
 		sprintf_s(buffer, _countof(buffer), "Direction: %.0f", acos(directionVector.y) * 180 / PI);
 		CP_Font_DrawText(buffer, 200, 200);
+
+		sprintf_s(buffer, _countof(buffer), "Rotation Inc: %.4f", rotationIncrement);
+		CP_Font_DrawText(buffer, 200, 250);
 
 		/*********\
 		| CONTROL |
