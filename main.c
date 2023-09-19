@@ -84,11 +84,11 @@ typedef struct {
 
 TextureRect CLOUD_TEXTURE_POSITIONS[] = {
 	{140, 100, 1, 1, 140, 100},		//0
-	{140, 100, 140, 0, 280, 100},	//1
-	{100, 100, 280, 0, 380, 100},	//2
-	{140, 100, 380, 0, 520, 100},	//3
-	{260, 100, 520, 0, 680, 100},	//4
-	{100, 100, 720, 0, 820, 100},	//5
+	{140, 100, 140, 1, 280, 100},	//1
+	{100, 60, 280, 20, 380, 80},	//2
+	{120, 55, 400, 25, 520, 80},	//3
+	{150, 100, 530, 5, 680, 105},	//4
+	{100, 100, 720, 1, 820, 100},	//5
 	{140, 100, 1, 100, 140, 200},	//6
 	{200, 100, 140, 100, 340, 200},	//7
 	{140, 100, 340, 100, 480, 200},	//8
@@ -140,11 +140,15 @@ void drawPlayer(void) {
 		bodyAngle							//Rotation
 	);
 
-	CP_Settings_Stroke(CP_Color_Create(255,0,0,255));
+	CP_Settings_Stroke(CP_Color_Create(255, 255, 0, 255));
 	CP_Settings_StrokeWeight(3);
-	//CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
+	CP_Settings_NoFill();
+	CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
+	CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
+	CP_Graphics_DrawCircle(centerX - bodyOffsetVector.x, centerY - bodyOffsetVector.y, 70);
 	CP_Settings_StrokeWeight(2);
 	CP_Settings_Stroke(BLACK);
+	CP_Settings_Fill(BLACK);
 }
 
 /* * * * * * * * * * * * *
@@ -157,7 +161,7 @@ void createClouds(void) {
 		activeClouds[i].size = 1;
 		activeClouds[i].x = CP_Random_RangeFloat(bounds.west + ww / 2, bounds.east - ww / 2 - 200);
 		activeClouds[i].y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
-		activeClouds[i].img_id = CP_Random_RangeInt(0, 12);
+		activeClouds[i].img_id = CP_Random_RangeInt(0, 11); //Should be 0 to 12 but the last cloud in the texture pack isn't great for collision.
 	}
 }
 
@@ -227,6 +231,29 @@ void game_update(void) {
 			Cloud currentCloud = activeClouds[i];
 			TextureRect currentTexture = CLOUD_TEXTURE_POSITIONS[currentCloud.img_id];
 			CP_Image_DrawSubImage(cloudTexture, currentCloud.x + globalX, currentCloud.y + globalY, currentCloud.size * currentTexture.w, currentCloud.size * currentTexture.h, currentTexture.x0, currentTexture.y0, currentTexture.x1, currentTexture.y1, 255);
+
+			//DEBUG COLLISION CIRCLE
+			CP_Settings_NoFill();
+			CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
+			CP_Graphics_DrawEllipse(
+				activeClouds[i].x + globalX + currentTexture.w/2, 
+				activeClouds[i].y + globalY + currentTexture.h/2, 
+				currentTexture.w * 0.75, //a percentage of actual width 
+				currentTexture.h * 0.75
+			);
+			CP_Settings_Fill(BLACK);
+			CP_Settings_Stroke(BLACK);
+
+			CP_Vector currentCloudVector = CP_Vector_Set(activeClouds[i].x + globalX + currentTexture.w / 2, activeClouds[i].y + globalY + currentTexture.h / 2);
+			CP_Vector centerVector = CP_Vector_Set(ww / 2, wh / 2);
+			//CP_Graphics_DrawLine(currentCloudVector.x, currentCloudVector.y, centerVector.x, centerVector.y);
+			float distance = CP_Vector_Distance(currentCloudVector, centerVector);
+
+			CP_Settings_TextSize(20);
+			char cloudBuffer[50] = { 0 };
+			sprintf_s(cloudBuffer, _countof(cloudBuffer), "%.2f", distance);
+			CP_Font_DrawText(cloudBuffer, currentCloudVector.x, currentCloudVector.y);
+
 		}
 
 		//DRAW DEBUGGING SQUARE
