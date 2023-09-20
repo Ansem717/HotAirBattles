@@ -40,7 +40,7 @@ Getting Hit - while I want there to be a way for players to skillfully save them
 */
 
 CP_Image cloudTexture;
-CP_Image hotAirBalloonIMG;
+CP_Image redhitFlash;
 
 CP_Color BLACK;
 
@@ -62,6 +62,10 @@ float drag = 0.1f;
 float windSpeedX, windSpeedY;
 
 CP_Vector bodyOffsetVector;
+int isIFraming = 0;
+float iFrameDuration = 2;
+float iFrameStart;
+float flashAlpha;
 
 float ww, wh;
 
@@ -132,17 +136,22 @@ void drawPlayer(void) {
 
 	float bodyAngle = acos(directionVector.y) * 180 / PI;
 	bodyAngle = (directionVector.x < 0) ? bodyAngle : -bodyAngle;
-	CP_Graphics_DrawEllipseAdvanced(centerX - bodyOffsetVector.x, centerY - bodyOffsetVector.y, bodyW, bodyH, bodyAngle);
-	CP_Graphics_DrawTriangleAdvanced(
-		centerX - wingW / 2,				//x1
-		centerY + wingH / 2 - wingYOffset,	//y1
-		centerX,							//x2
-		centerY - wingH / 2 - wingYOffset,	//y2
-		centerX + wingW / 2,				//x3
-		centerY + wingH / 2 - wingYOffset,	//y3
-		bodyAngle							//Rotation
-	);
 
+	
+	if (!isIFraming || CP_System_GetFrameCount() % 10 < 5) {
+		//Only draw the body if we're not iFraming OR if we are iFraming, the only draw the body every other frame (flash).
+
+		CP_Graphics_DrawEllipseAdvanced(centerX - bodyOffsetVector.x, centerY - bodyOffsetVector.y, bodyW, bodyH, bodyAngle);
+		CP_Graphics_DrawTriangleAdvanced(
+			centerX - wingW / 2,				//x1
+			centerY + wingH / 2 - wingYOffset,	//y1
+			centerX,							//x2
+			centerY - wingH / 2 - wingYOffset,	//y2
+			centerX + wingW / 2,				//x3
+			centerY + wingH / 2 - wingYOffset,	//y3
+			bodyAngle							//Rotation
+		);
+	}
 	//DEBUGGING SHAPES
 	/*CP_Settings_Stroke(CP_Color_Create(255, 255, 0, 255));
 	CP_Settings_StrokeWeight(3);
@@ -175,6 +184,7 @@ void game_init(void) {
 
 	CP_System_Fullscreen();
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
+	redhitFlash = CP_Image_Load("Assets/redhit.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
 	
 	ww = CP_System_GetWindowWidth();
@@ -279,14 +289,16 @@ void game_update(void) {
 			double ellipseRadiusTowardsPlayer = a*b / sqrt(a*a*sin(t)*sin(t) + b*b*cos(t)*cos(t));
 
 			//COLISION
-			if (ellipseRadiusTowardsPlayer + 35 > distance) {
-				paused = 1;
+			if (!isIFraming && ellipseRadiusTowardsPlayer + 35 > distance) {
+				isIFraming = 1;
+				flashAlpha = 255;
+				iFrameStart = CP_System_GetSeconds();
 			}
 		}
 
 		//DRAW DEBUGGING SQUARE
 		CP_Settings_NoFill();
-		CP_Graphics_DrawRect(bounds.west + globalX, bounds.north + globalY, bounds.width, bounds.height);
+		//CP_Graphics_DrawRect(bounds.west + globalX, bounds.north + globalY, bounds.width, bounds.height);
 		CP_Settings_Fill(BLACK);
 
 		/*************\
@@ -378,6 +390,24 @@ void game_update(void) {
 
 		sprintf_s(buffer, _countof(buffer), "Rotation Inc: %.4f", rotationIncrement);
 		CP_Font_DrawText(buffer, 200, 250);
+
+		/**********\
+		| FEEDBACK |
+		\**********/
+		//When the player gets hit by a cloud:
+		// Flash the screen, time the iframes, increase turbulence, decrease speed, mark a "HIT"
+		//When the player collects a coin:
+		// Flash the screen, mark a "SCORE"
+		if (isIFraming) {
+			//We just got hit! 
+			CP_Image_Draw(redhitFlash, 0, 0, ww, wh, flashAlpha);
+			flashAlpha -= 10;
+
+			if (CP_System_GetSeconds() >= iFrameStart + iFrameDuration) {
+				isIFraming = 0;
+				flashAlpha = 0;
+			}
+		}
 
 		/*********\
 		| CONTROL |
