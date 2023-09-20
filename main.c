@@ -122,10 +122,12 @@ Bounds bounds;
 typedef struct {
 	float x;
 	float y;
-	float r;
 } Coin;
 
 Coin activeCoin;
+float coinVelocity = 1;
+float coinYPos = 0;
+float coinCap = 10;
 
 /* * * * * * *
 * DRAW PLAYER *
@@ -189,6 +191,14 @@ void createClouds(void) {
 	}
 }
 
+/* * * * * * * * * * * *
+* RANDOMLY CREATE COIN *
+* * * * * * * * * * * */
+void createCoin(void) {
+	activeCoin.x = CP_Random_RangeFloat(bounds.west + ww / 2, bounds.east - ww / 2 - 200);
+	activeCoin.y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
+}
+
 void game_init(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
 	directionVector = CP_Vector_Set(0, 1);
@@ -196,6 +206,7 @@ void game_init(void) {
 	CP_System_Fullscreen();
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	redhitFlash = CP_Image_Load("Assets/redhit.png");
+	coinIMG = CP_Image_Load("Assets/coin.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
 	
 	ww = CP_System_GetWindowWidth();
@@ -209,6 +220,7 @@ void game_init(void) {
 	bounds.height = bounds.south - bounds.north;
 
 	createClouds();
+	createCoin();
 
 	CP_Settings_Fill(BLACK);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
@@ -304,8 +316,22 @@ void game_update(void) {
 				isIFraming = 1;
 				flashAlpha = 255;
 				iFrameStart = CP_System_GetSeconds();
+				remainingLives--;
 			}
 		}
+
+		/***********\
+		| DRAW COIN |
+		\***********/
+		float coinSize = 80;
+		CP_Image_Draw(coinIMG, activeCoin.x + globalX, activeCoin.y + globalY + coinYPos, coinSize, coinSize, 255);
+		coinYPos += coinVelocity;
+		if (coinYPos > coinCap || coinYPos < -coinCap) {
+			coinVelocity *= -1;
+		}
+		CP_Settings_StrokeWeight(2.0);
+		CP_Settings_Stroke(BLACK);
+		CP_Graphics_DrawLine(activeCoin.x + globalX, activeCoin.y + globalY, ww/2, wh/2);
 
 		//DRAW DEBUGGING SQUARE
 		CP_Settings_NoFill();
@@ -427,8 +453,10 @@ void game_update(void) {
 		\**********/
 		//When the player gets hit by a cloud:
 		// Flash the screen, time the iframes, increase turbulence, decrease speed, mark a "HIT"
-		//When the player collects a coin:
-		// Flash the screen, mark a "SCORE"
+		if (remainingLives <= 0) {
+			CP_Engine_Terminate();
+		}
+
 		if (isIFraming) {
 			//We just got hit! 
 			CP_Image_Draw(redhitFlash, 0, 0, ww, wh, flashAlpha);
@@ -440,6 +468,11 @@ void game_update(void) {
 				flashAlpha = 0;
 			}
 		}
+
+		//When the player collects a coin:
+		// Flash the screen, mark a "SCORE"
+
+
 
 		/************\
 		| PAUSE MENU |
