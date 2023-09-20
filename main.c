@@ -61,6 +61,8 @@ float speedIncrement = 0.25f;
 float drag = 0.1f;
 float windSpeedX, windSpeedY;
 
+CP_Vector bodyOffsetVector;
+
 float ww, wh;
 
 typedef struct {
@@ -82,20 +84,21 @@ typedef struct {
 	float y1;
 } TextureRect;
 
+//These values "cut" the CloudTextures.png image into subimages to randomize clouds
 TextureRect CLOUD_TEXTURE_POSITIONS[] = {
-	{140, 100, 1, 1, 140, 100},		//0
-	{140, 100, 140, 1, 280, 100},	//1
-	{100, 60, 280, 20, 380, 80},	//2
-	{120, 55, 400, 25, 520, 80},	//3
-	{150, 100, 530, 5, 680, 105},	//4
-	{100, 100, 720, 1, 820, 100},	//5
-	{140, 100, 1, 100, 140, 200},	//6
-	{200, 100, 140, 100, 340, 200},	//7
-	{140, 100, 340, 100, 480, 200},	//8
-	{210, 100, 490, 100, 700, 200},	//9
-	{140, 100, 710, 100, 850, 200}, //10
-	{300, 100, 1, 200, 305, 305},	//11
-	{210, 120, 330, 190, 530, 310}	//12
+	{111,  73,   5,  18, 116,  91},	//0
+	{122,  58, 142,  23, 264,  81},	//1
+	{ 90,  48, 288,  26, 378,  74},	//2
+	{104,  46, 410,  30, 514,  76},	//3
+	{135,  86, 543,  10, 678,  96},	//4
+	{ 91,  69, 724,  13, 815,  82},	//5
+	{112,  59,   8, 120, 120, 179},	//6
+	{176,  70, 138, 112, 314, 182},	//7
+	{126,  69, 342, 115, 468, 184},	//8
+	{199, 100, 494, 112, 693, 183},	//9
+	{137,  70, 718, 110, 845, 180}, //10
+	{187,  93,  10, 209, 287, 302},	//11
+	{184,  84, 339, 203, 523, 287}	//12
 };
 
 typedef struct {
@@ -119,7 +122,7 @@ void drawPlayer(void) {
 	float bodyW = 30;
 	float bodyH = 70;
 	float bodyOffsetMult = 10;
-	CP_Vector bodyOffsetVector = CP_Vector_Set(bodyOffsetMult * directionVector.x, bodyOffsetMult * directionVector.y);
+	bodyOffsetVector = CP_Vector_Set(bodyOffsetMult * directionVector.x, bodyOffsetMult * directionVector.y);
 	float wingW = 70;
 	float wingYOffset = 9;
 	float wingH = 50;
@@ -140,7 +143,8 @@ void drawPlayer(void) {
 		bodyAngle							//Rotation
 	);
 
-	CP_Settings_Stroke(CP_Color_Create(255, 255, 0, 255));
+	//DEBUGGING SHAPES
+	/*CP_Settings_Stroke(CP_Color_Create(255, 255, 0, 255));
 	CP_Settings_StrokeWeight(3);
 	CP_Settings_NoFill();
 	CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
@@ -148,7 +152,7 @@ void drawPlayer(void) {
 	CP_Graphics_DrawCircle(centerX - bodyOffsetVector.x, centerY - bodyOffsetVector.y, 70);
 	CP_Settings_StrokeWeight(2);
 	CP_Settings_Stroke(BLACK);
-	CP_Settings_Fill(BLACK);
+	CP_Settings_Fill(BLACK);*/
 }
 
 /* * * * * * * * * * * * *
@@ -231,29 +235,53 @@ void game_update(void) {
 			Cloud currentCloud = activeClouds[i];
 			TextureRect currentTexture = CLOUD_TEXTURE_POSITIONS[currentCloud.img_id];
 			CP_Image_DrawSubImage(cloudTexture, currentCloud.x + globalX, currentCloud.y + globalY, currentCloud.size * currentTexture.w, currentCloud.size * currentTexture.h, currentTexture.x0, currentTexture.y0, currentTexture.x1, currentTexture.y1, 255);
-
+			
+			float widthScalar = 0.8f;
+			float heightScalar = 0.7f;
 			//DEBUG COLLISION CIRCLE
-			CP_Settings_NoFill();
-			CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
-			CP_Graphics_DrawEllipse(
-				activeClouds[i].x + globalX + currentTexture.w/2, 
-				activeClouds[i].y + globalY + currentTexture.h/2, 
-				currentTexture.w * 0.75, //a percentage of actual width 
-				currentTexture.h * 0.75
-			);
-			CP_Settings_Fill(BLACK);
-			CP_Settings_Stroke(BLACK);
+			//CP_Settings_NoFill();
+			//CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
+			//CP_Graphics_DrawEllipse(
+			//	activeClouds[i].x + globalX + currentTexture.w/2, 
+			//	activeClouds[i].y + globalY + currentTexture.h/2 + 5, 
+			//	currentTexture.w * widthScalar, //a percentage of actual width 
+			//	currentTexture.h * heightScalar
+			//);
+			//CP_Settings_Fill(BLACK);
+			//CP_Settings_Stroke(BLACK);
 
 			CP_Vector currentCloudVector = CP_Vector_Set(activeClouds[i].x + globalX + currentTexture.w / 2, activeClouds[i].y + globalY + currentTexture.h / 2);
-			CP_Vector centerVector = CP_Vector_Set(ww / 2, wh / 2);
+			CP_Vector centerVector = CP_Vector_Set(ww / 2 - bodyOffsetVector.x, wh / 2 - bodyOffsetVector.y);
 			//CP_Graphics_DrawLine(currentCloudVector.x, currentCloudVector.y, centerVector.x, centerVector.y);
-			float distance = CP_Vector_Distance(currentCloudVector, centerVector);
+			
+			/* 
+			to get the radius of the cloud ellipse collision:
 
-			CP_Settings_TextSize(20);
-			char cloudBuffer[50] = { 0 };
-			sprintf_s(cloudBuffer, _countof(cloudBuffer), "%.2f", distance);
-			CP_Font_DrawText(cloudBuffer, currentCloudVector.x, currentCloudVector.y);
+			r = ab / root(a * a * sin^2(theta) + b * b * cos^2(theta))
+			
+			where:
+				a = currentTexture.w * 0.75 / 2
+				b = cloud height / 2
+				theta = horiztonal angle towards ship
 
+			To get the horizontal angle towards the ship:
+
+				acos(plane.y-cloud.y / distance) * 180 / PI
+
+			*/
+
+			double a = currentTexture.w * widthScalar / 2;
+			double b = currentTexture.h * heightScalar / 2;
+			double x = centerVector.x - currentCloudVector.x; 
+			double y = centerVector.y - currentCloudVector.y;
+			double distance = sqrt(x * x + y * y);
+			double t = acos(x / distance);
+			double ellipseRadiusTowardsPlayer = a*b / sqrt(a*a*sin(t)*sin(t) + b*b*cos(t)*cos(t));
+
+			//COLISION
+			if (ellipseRadiusTowardsPlayer + 35 > distance) {
+				paused = 1;
+			}
 		}
 
 		//DRAW DEBUGGING SQUARE
@@ -266,9 +294,9 @@ void game_update(void) {
 		\*************/
 		drawPlayer();
 
-		/*********************************\
-		| CALCULATE VELOCITY AND POSITION |
-		\*********************************/
+		/*******************************************************\
+		| CALCULATE VELOCITY, POSITION, ROTATION, AND DIRECTION |
+		\*******************************************************/
 
 		//x2 = cosAx1 − sinAy1
 		//y2 = sinAx1 + cosAy1
