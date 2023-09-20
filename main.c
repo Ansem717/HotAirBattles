@@ -41,6 +41,7 @@ Getting Hit - while I want there to be a way for players to skillfully save them
 
 CP_Image cloudTexture;
 CP_Image redhitFlash;
+CP_Image coinIMG;
 
 CP_Color BLACK;
 
@@ -63,9 +64,11 @@ float windSpeedX, windSpeedY;
 
 CP_Vector bodyOffsetVector;
 int isIFraming = 0;
-float iFrameDuration = 2;
+float iFrameDuration = 1;
 float iFrameStart;
 float flashAlpha;
+int remainingLives = 3;
+int score = 0;
 
 float ww, wh;
 
@@ -115,6 +118,14 @@ typedef struct {
 } Bounds;
 
 Bounds bounds;
+
+typedef struct {
+	float x;
+	float y;
+	float r;
+} Coin;
+
+Coin activeCoin;
 
 /* * * * * * *
 * DRAW PLAYER *
@@ -391,24 +402,6 @@ void game_update(void) {
 		sprintf_s(buffer, _countof(buffer), "Rotation Inc: %.4f", rotationIncrement);
 		CP_Font_DrawText(buffer, 200, 250);
 
-		/**********\
-		| FEEDBACK |
-		\**********/
-		//When the player gets hit by a cloud:
-		// Flash the screen, time the iframes, increase turbulence, decrease speed, mark a "HIT"
-		//When the player collects a coin:
-		// Flash the screen, mark a "SCORE"
-		if (isIFraming) {
-			//We just got hit! 
-			CP_Image_Draw(redhitFlash, 0, 0, ww, wh, flashAlpha);
-			flashAlpha -= 10;
-
-			if (CP_System_GetSeconds() >= iFrameStart + iFrameDuration) {
-				isIFraming = 0;
-				flashAlpha = 0;
-			}
-		}
-
 		/*********\
 		| CONTROL |
 		\*********/
@@ -427,6 +420,25 @@ void game_update(void) {
 			rotationAngle += rotationIncrement;
 		} else {
 			rotationAngle = 0;
+		}
+
+		/**********\
+		| FEEDBACK |
+		\**********/
+		//When the player gets hit by a cloud:
+		// Flash the screen, time the iframes, increase turbulence, decrease speed, mark a "HIT"
+		//When the player collects a coin:
+		// Flash the screen, mark a "SCORE"
+		if (isIFraming) {
+			//We just got hit! 
+			CP_Image_Draw(redhitFlash, 0, 0, ww, wh, flashAlpha);
+			flashAlpha -= 10;
+			rotationAngle += CP_Random_RangeFloat(-1, 1) / 2;
+
+			if (CP_System_GetSeconds() >= iFrameStart + iFrameDuration) {
+				isIFraming = 0;
+				flashAlpha = 0;
+			}
 		}
 
 		/************\
