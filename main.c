@@ -21,7 +21,7 @@
 
 CP_Image cloudTexture, redhitFlash, coinIMG;
 
-CP_Color BLACK;
+CP_Color BLACK, BLUE;
 float ww, wh; //window width and window height
 
 int paused, pauseMenuShowing, isIFraming;
@@ -91,6 +91,9 @@ typedef struct {
 Coin activeCoin;
 float coinYPos, coinVelocity, coinCap;
 
+float deathAlpha;
+int dminutes, dseconds;
+
 void initGlobalVariables(void) {
 	paused = false;
 	pauseMenuShowing = false;
@@ -116,7 +119,7 @@ void initGlobalVariables(void) {
 	iFrameStart = 0;
 	flashAlpha = 0;
 
-	remainingLives = 3;
+	remainingLives = 1;
 	score = 0;
 
 	coinVelocity = 1;
@@ -136,8 +139,8 @@ void initBounds(void) {
 /* * * * * * *
 * DRAW PLAYER *
  * * * * * * */
-void drawPlayer(void) {
-	CP_Settings_Fill(BLACK);
+void drawPlayer(CP_Color c) {
+	CP_Settings_Fill(c);
 	CP_Settings_NoStroke();
 
 	float bodyW = 30;
@@ -204,12 +207,59 @@ void createCoin(void) {
 	activeCoin.y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
 }
 
+void death_init(void) {
+	deathAlpha = 0;
+	int timeOfDeath = CP_System_GetSeconds();
+	dminutes = timeOfDeath / 60;
+	dseconds = timeOfDeath % 60;
+	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+}
+
+void death_update(void) {
+	BLACK.a = deathAlpha;
+	CP_Settings_Fill(BLACK);
+	CP_Graphics_DrawRect(0, 0, ww, wh);
+
+	drawPlayer(CP_Color_Create(255, 255, 255, deathAlpha*5));
+	
+	CP_Settings_Fill(BLUE);
+	CP_Settings_TextSize(100.0f);
+
+	CP_Font_DrawText("Game Over!", ww / 2, 150);
+
+	CP_Settings_TextSize(70.0f);
+
+	char buffer[50] = { 0 };
+	sprintf_s(buffer, _countof(buffer), "Score: %d", score);
+	CP_Font_DrawText(buffer, ww / 2, 250);
+
+	sprintf_s(buffer, _countof(buffer), "Gametime: %d:%d", dminutes, dseconds);
+	CP_Font_DrawText(buffer, ww / 2, 320);
+
+	CP_Font_DrawText("Press R to restart.", ww / 2, wh - 250);
+
+	CP_Font_DrawText("Press Q to quit.", ww / 2, wh - 150);
+
+	deathAlpha += 1;
+
+	if (CP_Input_KeyReleased(KEY_R)) {
+		//CP_Engine_SetNextGameState(game_init, game_update, game_exit);
+	} else if (CP_Input_KeyReleased(KEY_Q)) {
+		CP_Engine_Terminate();
+	}
+}
+
+void death_exit(void) {
+
+}
+
 void game_init(void) {
 	CP_System_Fullscreen();
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	redhitFlash = CP_Image_Load("Assets/redhit.png");
 	coinIMG = CP_Image_Load("Assets/coin.png");
 	BLACK = CP_Color_Create(0, 0, 0, 255);
+	BLUE = CP_Color_Create(32, 192, 255, 255);
 	
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
@@ -233,8 +283,9 @@ void game_update(void) {
 			if (CP_Input_KeyReleased(KEY_ESCAPE)) {
 				paused = false;
 				pauseMenuShowing = false;
-			}
-			if (CP_Input_KeyReleased(KEY_SPACE)) {
+			} else if (CP_Input_KeyReleased(KEY_R)) {
+				//CP_Engine_SetNextGameState(game_init, game_update, game_exit);
+			} else if (CP_Input_KeyReleased(KEY_Q)) {
 				CP_Engine_Terminate();
 			}
 		} else {
@@ -246,17 +297,18 @@ void game_update(void) {
 			CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
 			CP_Settings_TextSize(70.0f);
-			CP_Font_DrawText("PAUSED", ww / 2, wh * 3 / 8);
+			CP_Font_DrawText("PAUSED", ww / 2, wh * 5 / 16);
 
 			CP_Settings_TextSize(50.0f);
-			CP_Font_DrawText("Press ESC to resume", ww / 2, wh * 4 / 8);
-			CP_Font_DrawText("Press SPACE to quit", ww / 2, wh * 5 / 8);
+			CP_Font_DrawText("Press ESC to Go Back", ww / 2, wh * 7 / 16);
+			CP_Font_DrawText("Press Q to Quit", ww / 2, wh * 17 / 32);
+			CP_Font_DrawText("Press R to Restart", ww / 2, wh * 20 / 32);
 
 			pauseMenuShowing = true;
 		}
 	} else {
 		// DRAW BACKGROUND (Sky)
-		CP_Graphics_ClearBackground(CP_Color_Create(32, 192, 255, 255));
+		CP_Graphics_ClearBackground(BLUE);
 		CP_Settings_Fill(BLACK);
 
 		/*************\
@@ -311,6 +363,7 @@ void game_update(void) {
 					//PLAYER DIED
 					//instead of running iFrames, let's swap to the death gamestate
 					CP_Engine_SetNextGameState(death_init, death_update, death_exit);
+					return;
 				}
 				isIFraming = true;
 				flashAlpha = 255;
@@ -341,7 +394,7 @@ void game_update(void) {
 		/*************\
 		| DRAW PLAYER |
 		\*************/
-		drawPlayer();
+		drawPlayer(BLACK);
 
 		/*******************************************************\
 		| CALCULATE VELOCITY, POSITION, ROTATION, AND DIRECTION |
@@ -453,10 +506,6 @@ void game_update(void) {
 		\**********/
 		//When the player gets hit by a cloud:
 		// Flash the screen, time the iframes, increase turbulence, decrease speed, mark a "HIT"
-		if (remainingLives <= 0) {
-			CP_Engine_Terminate();
-		}
-
 		if (isIFraming) {
 			//We just got hit! 
 			CP_Image_Draw(redhitFlash, 0, 0, ww, wh, flashAlpha);
@@ -483,10 +532,12 @@ void game_update(void) {
 	}
 }
 
-
 void game_exit(void) {
 	
 }
+
+
+
 
 int main(void) {
 	CP_Engine_SetNextGameState(game_init, game_update, game_exit);
