@@ -93,6 +93,14 @@ float coinYPos, coinVelocity, coinCap;
 
 float deathAlpha;
 int dminutes, dseconds;
+float timeOfRestart;
+
+void death_init(void);
+void death_update(void);
+void death_exit(void);
+void game_init(void);
+void game_update(void);
+void game_exit(void);
 
 void initGlobalVariables(void) {
 	paused = false;
@@ -207,52 +215,6 @@ void createCoin(void) {
 	activeCoin.y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
 }
 
-void death_init(void) {
-	deathAlpha = 0;
-	int timeOfDeath = CP_System_GetSeconds();
-	dminutes = timeOfDeath / 60;
-	dseconds = timeOfDeath % 60;
-	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
-}
-
-void death_update(void) {
-	BLACK.a = deathAlpha;
-	CP_Settings_Fill(BLACK);
-	CP_Graphics_DrawRect(0, 0, ww, wh);
-
-	drawPlayer(CP_Color_Create(255, 255, 255, deathAlpha*5));
-	
-	CP_Settings_Fill(BLUE);
-	CP_Settings_TextSize(100.0f);
-
-	CP_Font_DrawText("Game Over!", ww / 2, 150);
-
-	CP_Settings_TextSize(70.0f);
-
-	char buffer[50] = { 0 };
-	sprintf_s(buffer, _countof(buffer), "Score: %d", score);
-	CP_Font_DrawText(buffer, ww / 2, 250);
-
-	sprintf_s(buffer, _countof(buffer), "Gametime: %d:%d", dminutes, dseconds);
-	CP_Font_DrawText(buffer, ww / 2, 320);
-
-	CP_Font_DrawText("Press R to restart.", ww / 2, wh - 250);
-
-	CP_Font_DrawText("Press Q to quit.", ww / 2, wh - 150);
-
-	deathAlpha += 1;
-
-	if (CP_Input_KeyReleased(KEY_R)) {
-		//CP_Engine_SetNextGameState(game_init, game_update, game_exit);
-	} else if (CP_Input_KeyReleased(KEY_Q)) {
-		CP_Engine_Terminate();
-	}
-}
-
-void death_exit(void) {
-
-}
-
 void game_init(void) {
 	CP_System_Fullscreen();
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
@@ -276,7 +238,6 @@ void game_init(void) {
 }
 
 void game_update(void) {
-
 	if (paused) {
 		if (pauseMenuShowing) {
 			//close pause menu
@@ -284,7 +245,7 @@ void game_update(void) {
 				paused = false;
 				pauseMenuShowing = false;
 			} else if (CP_Input_KeyReleased(KEY_R)) {
-				//CP_Engine_SetNextGameState(game_init, game_update, game_exit);
+				CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);
 			} else if (CP_Input_KeyReleased(KEY_Q)) {
 				CP_Engine_Terminate();
 			}
@@ -478,7 +439,7 @@ void game_update(void) {
 		sprintf_s(buffer, _countof(buffer), "Direction: %.0f", acos(directionVector.y) * 180 / PI);
 		CP_Font_DrawText(buffer, 200, 200);
 
-		sprintf_s(buffer, _countof(buffer), "Rotation Inc: %.4f", rotationIncrement);
+		sprintf_s(buffer, _countof(buffer), "Game Time: %.1f", CP_System_GetSeconds() - timeOfRestart);
 		CP_Font_DrawText(buffer, 200, 250);
 
 		/*********\
@@ -518,11 +479,6 @@ void game_update(void) {
 			}
 		}
 
-		//When the player collects a coin:
-		// Flash the screen, mark a "SCORE"
-
-
-
 		/************\
 		| PAUSE MENU |
 		\************/
@@ -536,6 +492,52 @@ void game_exit(void) {
 	
 }
 
+
+void death_init(void) {
+	deathAlpha = 0;
+	int timeOfDeath = CP_System_GetSeconds() - timeOfRestart;
+	dminutes = timeOfDeath / 60;
+	dseconds = timeOfDeath % 60;
+	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+}
+
+void death_update(void) {
+	BLACK.a = deathAlpha;
+	CP_Settings_Fill(BLACK);
+	CP_Graphics_DrawRect(0, 0, ww, wh);
+
+	drawPlayer(CP_Color_Create(255, 255, 255, deathAlpha * 5));
+
+	CP_Settings_Fill(BLUE);
+	CP_Settings_TextSize(100.0f);
+
+	CP_Font_DrawText("Game Over!", ww / 2, 150);
+
+	CP_Settings_TextSize(70.0f);
+
+	char buffer[50] = { 0 };
+	sprintf_s(buffer, _countof(buffer), "Score: %d", score);
+	CP_Font_DrawText(buffer, ww / 2, 250);
+
+	sprintf_s(buffer, _countof(buffer), "Gametime: %dm%ds", dminutes, dseconds);
+	CP_Font_DrawText(buffer, ww / 2, 320);
+
+	CP_Font_DrawText("Press R to restart.", ww / 2, wh - 250);
+
+	CP_Font_DrawText("Press Q to quit.", ww / 2, wh - 150);
+
+	deathAlpha += 1;
+
+	if (CP_Input_KeyReleased(KEY_R)) {
+		CP_Engine_SetNextGameState(game_init, game_update, game_exit);
+	} else if (CP_Input_KeyReleased(KEY_Q)) {
+		CP_Engine_Terminate();
+	}
+}
+
+void death_exit(void) {
+	timeOfRestart = CP_System_GetSeconds();
+}
 
 
 
