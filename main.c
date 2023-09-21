@@ -16,61 +16,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 #define PI 3.14159265358979323846264
 
-/*
-Ok so, the plan is to make a hot-air-balloon game, that's half exploration half action
-you try to climb as high as you can - the higher you are, the harder it is to control, and the more impactful an obstacle is
-The game ends when you crash, with various statistics determining a score
-
-Stats:
-Air Time
-Height
-Collectables
-Hits (-negative)
-Near Misses (+positive)
-
-Controls:
-WASD or Arrow Keys to Move
-
-Features:
-Wind Speed - determines how fast the balloon travels and in which direction. Becomes more erratic at higher elevations
-Obstacles - Birds, Planes / Helicopters, Kites, Alien ships - all of them function similarly. They can hit the balloon.
-Getting Hit - while I want there to be a way for players to skillfully save themselves, I think that's out of scope. For now, it's 3 strikes.
-*/
-
-CP_Image cloudTexture;
-CP_Image redhitFlash;
-CP_Image coinIMG;
+CP_Image cloudTexture, redhitFlash, coinIMG;
 
 CP_Color BLACK;
+float ww, wh; //window width and window height
 
-int paused = 0;
-int pauseMenuShowing = 0;
+int paused, pauseMenuShowing, isIFraming;
 
 float globalX, globalY;
 
-CP_Vector directionVector;
-float rotationAngle;
-float rotationIncrement; //the increment changes based on speed - the faster you are, the harder it is to turn.
-float rotationCap = 0.06f;
+CP_Vector directionVector, centerVector;
+float rotationAngle, rotationIncrement, rotationCap;
 
-float speed;
-float speedCap = 20;
-float speedMin = 5; //The plane is always moving!
-float speedIncrement = 0.25f;
-float drag = 0.1f;
-float windSpeedX, windSpeedY;
+float speed, speedCap, speedMin, speedIncrement, drag;
 
-CP_Vector bodyOffsetVector;
-int isIFraming = 0;
-float iFrameDuration = 1;
-float iFrameStart;
-float flashAlpha;
-int remainingLives = 3;
-int score = 0;
-
-float ww, wh;
+float iFrameDuration, iFrameStart, flashAlpha;
+int remainingLives, score;
 
 typedef struct {
 	float size;
@@ -125,9 +89,49 @@ typedef struct {
 } Coin;
 
 Coin activeCoin;
-float coinVelocity = 1;
-float coinYPos = 0;
-float coinCap = 10;
+float coinYPos, coinVelocity, coinCap;
+
+void initGlobalVariables(void) {
+	paused = false;
+	pauseMenuShowing = false;
+	isIFraming = false;
+
+	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
+
+	globalX = 0;
+	globalY = 0;
+	directionVector = CP_Vector_Set(0, 1);
+
+	rotationAngle = 0;
+	rotationIncrement = 0; //the increment changes based on speed - the faster you are, the harder it is to turn.
+	rotationCap = 0.06f;
+
+	speed = 0;
+	speedCap = 20;
+	speedMin = 5; //The plane is always moving!
+	speedIncrement = 0.25f;
+	drag = 0.1f;
+
+	iFrameDuration = 1;
+	iFrameStart = 0;
+	flashAlpha = 0;
+
+	remainingLives = 3;
+	score = 0;
+
+	coinVelocity = 1;
+	coinYPos = 0;
+	coinCap = 10;
+}
+
+void initBounds(void) {
+	bounds.north = -wh;
+	bounds.east = 2 * ww;
+	bounds.south = 2 * wh;
+	bounds.west = -ww;
+	bounds.width = bounds.east - bounds.west;
+	bounds.height = bounds.south - bounds.north;
+}
 
 /* * * * * * *
 * DRAW PLAYER *
@@ -139,7 +143,8 @@ void drawPlayer(void) {
 	float bodyW = 30;
 	float bodyH = 70;
 	float bodyOffsetMult = 10;
-	bodyOffsetVector = CP_Vector_Set(bodyOffsetMult * directionVector.x, bodyOffsetMult * directionVector.y);
+	CP_Vector bodyOffsetVector = CP_Vector_Set(bodyOffsetMult * directionVector.x, bodyOffsetMult * directionVector.y);
+	centerVector = CP_Vector_Set(ww / 2 - bodyOffsetVector.x, wh / 2 - bodyOffsetVector.y);
 	float wingW = 70;
 	float wingYOffset = 9;
 	float wingH = 50;
@@ -200,9 +205,6 @@ void createCoin(void) {
 }
 
 void game_init(void) {
-	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
-	directionVector = CP_Vector_Set(0, 1);
-
 	CP_System_Fullscreen();
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	redhitFlash = CP_Image_Load("Assets/redhit.png");
@@ -212,12 +214,8 @@ void game_init(void) {
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
 
-	bounds.north = -wh;
-	bounds.east = 2*ww;
-	bounds.south = 2*wh;
-	bounds.west = -ww;
-	bounds.width = bounds.east - bounds.west;
-	bounds.height = bounds.south - bounds.north;
+	initGlobalVariables();
+	initBounds();
 
 	createClouds();
 	createCoin();
@@ -233,8 +231,8 @@ void game_update(void) {
 		if (pauseMenuShowing) {
 			//close pause menu
 			if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-				paused = 0;
-				pauseMenuShowing = 0;
+				paused = false;
+				pauseMenuShowing = false;
 			}
 			if (CP_Input_KeyReleased(KEY_SPACE)) {
 				CP_Engine_Terminate();
@@ -254,7 +252,7 @@ void game_update(void) {
 			CP_Font_DrawText("Press ESC to resume", ww / 2, wh * 4 / 8);
 			CP_Font_DrawText("Press SPACE to quit", ww / 2, wh * 5 / 8);
 
-			pauseMenuShowing = 1;
+			pauseMenuShowing = true;
 		}
 	} else {
 		// DRAW BACKGROUND (Sky)
@@ -284,23 +282,18 @@ void game_update(void) {
 			//CP_Settings_Stroke(BLACK);
 
 			CP_Vector currentCloudVector = CP_Vector_Set(activeClouds[i].x + globalX + currentTexture.w / 2, activeClouds[i].y + globalY + currentTexture.h / 2);
-			CP_Vector centerVector = CP_Vector_Set(ww / 2 - bodyOffsetVector.x, wh / 2 - bodyOffsetVector.y);
 			//CP_Graphics_DrawLine(currentCloudVector.x, currentCloudVector.y, centerVector.x, centerVector.y);
 			
 			/* 
 			to get the radius of the cloud ellipse collision:
-
 			r = ab / root(a * a * sin^2(theta) + b * b * cos^2(theta))
-			
 			where:
 				a = currentTexture.w * 0.75 / 2
 				b = cloud height / 2
 				theta = horiztonal angle towards ship
 
 			To get the horizontal angle towards the ship:
-
 				acos(plane.y-cloud.y / distance) * 180 / PI
-
 			*/
 
 			double a = currentTexture.w * widthScalar / 2;
@@ -313,10 +306,15 @@ void game_update(void) {
 
 			//COLISION
 			if (!isIFraming && ellipseRadiusTowardsPlayer + 35 > distance) {
-				isIFraming = 1;
+				remainingLives--;
+				if (remainingLives <= 0) {
+					//PLAYER DIED
+					//instead of running iFrames, let's swap to the death gamestate
+					CP_Engine_SetNextGameState(death_init, death_update, death_exit);
+				}
+				isIFraming = true;
 				flashAlpha = 255;
 				iFrameStart = CP_System_GetSeconds();
-				remainingLives--;
 			}
 		}
 
@@ -333,10 +331,12 @@ void game_update(void) {
 		CP_Settings_Stroke(BLACK);
 		CP_Graphics_DrawLine(activeCoin.x + globalX, activeCoin.y + globalY, ww/2, wh/2);
 
-		//DRAW DEBUGGING SQUARE
-		CP_Settings_NoFill();
+		/*
+		* DEBUG BOUNDARY SQUARE
+		*/
+		//CP_Settings_NoFill();
 		//CP_Graphics_DrawRect(bounds.west + globalX, bounds.north + globalY, bounds.width, bounds.height);
-		CP_Settings_Fill(BLACK);
+		//CP_Settings_Fill(BLACK);
 
 		/*************\
 		| DRAW PLAYER |
@@ -464,7 +464,7 @@ void game_update(void) {
 			rotationAngle += CP_Random_RangeFloat(-1, 1) / 2;
 
 			if (CP_System_GetSeconds() >= iFrameStart + iFrameDuration) {
-				isIFraming = 0;
+				isIFraming = false;
 				flashAlpha = 0;
 			}
 		}
@@ -478,7 +478,7 @@ void game_update(void) {
 		| PAUSE MENU |
 		\************/
 		if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-			paused = 1;
+			paused = true;
 		}
 	}
 }
