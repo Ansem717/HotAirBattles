@@ -25,6 +25,7 @@ CP_Color BLACK, BLUE;
 float ww, wh; //window width and window height
 
 int paused, pauseMenuShowing, isIFraming;
+char buffer[50] = { 0 };
 
 float globalX, globalY;
 
@@ -83,13 +84,8 @@ typedef struct {
 
 Bounds bounds;
 
-typedef struct {
-	float x;
-	float y;
-} Coin;
-
-Coin activeCoin;
-float coinYPos, coinVelocity, coinCap;
+CP_Vector activeCoin, mappedCoinVector;
+float coinYPos, coinVelocity, coinCap, coinAlpha, coinFadeSpeed;
 
 float deathAlpha;
 int dminutes, dseconds;
@@ -110,7 +106,7 @@ void initGlobalVariables(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
 
 	globalX = 0;
-	globalY = 0;
+	globalY = bounds.height / 2;
 	directionVector = CP_Vector_Set(0, 1);
 
 	rotationAngle = 0;
@@ -133,6 +129,8 @@ void initGlobalVariables(void) {
 	coinVelocity = 1;
 	coinYPos = 0;
 	coinCap = 10;
+	coinAlpha = 255;
+	coinFadeSpeed = 1;
 }
 
 void initBounds(void) {
@@ -213,6 +211,7 @@ void createClouds(void) {
 void createCoin(void) {
 	activeCoin.x = CP_Random_RangeFloat(bounds.west + ww / 2, bounds.east - ww / 2 - 200);
 	activeCoin.y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
+	mappedCoinVector = CP_Vector_Set(activeCoin.x + globalX, activeCoin.y + globalY);
 }
 
 void game_init(void) {
@@ -226,8 +225,8 @@ void game_init(void) {
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
 
-	initGlobalVariables();
 	initBounds();
+	initGlobalVariables();
 
 	createClouds();
 	createCoin();
@@ -246,7 +245,7 @@ void game_update(void) {
 				pauseMenuShowing = false;
 			} else if (CP_Input_KeyReleased(KEY_R)) {
 				CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);
-			} else if (CP_Input_KeyReleased(KEY_Q)) {
+			} else if (CP_Input_KeyReleased(KEY_Q) || CP_Input_KeyReleased(KEY_SPACE)) {
 				CP_Engine_Terminate();
 			}
 		} else {
@@ -294,7 +293,7 @@ void game_update(void) {
 			//CP_Settings_Fill(BLACK);
 			//CP_Settings_Stroke(BLACK);
 
-			CP_Vector currentCloudVector = CP_Vector_Set(activeClouds[i].x + globalX + currentTexture.w / 2, activeClouds[i].y + globalY + currentTexture.h / 2);
+			CP_Vector currentCloudVector = CP_Vector_Set(currentCloud.x + globalX + currentTexture.w / 2, currentCloud.y + globalY + currentTexture.h / 2);
 			//CP_Graphics_DrawLine(currentCloudVector.x, currentCloudVector.y, centerVector.x, centerVector.y);
 			
 			/* 
@@ -335,19 +334,48 @@ void game_update(void) {
 		/***********\
 		| DRAW COIN |
 		\***********/
-		float coinSize = 80;
-		CP_Image_Draw(coinIMG, activeCoin.x + globalX, activeCoin.y + globalY + coinYPos, coinSize, coinSize, 255);
+		float size = 80;
+		mappedCoinVector.x = activeCoin.x + globalX + size/2;
+		mappedCoinVector.y = activeCoin.y + globalY + coinYPos + size / 2;
+		CP_Image_Draw(coinIMG, mappedCoinVector.x, mappedCoinVector.y, size, size, coinAlpha);
 		coinYPos += coinVelocity;
-		if (coinYPos > coinCap || coinYPos < -coinCap) {
-			coinVelocity *= -1;
-		}
+		if (coinYPos > coinCap || coinYPos < -coinCap) coinVelocity *= -1;
+		//DEBUG LINE TOWARDS COIN
 		CP_Settings_StrokeWeight(2.0);
 		CP_Settings_Stroke(BLACK);
-		CP_Graphics_DrawLine(activeCoin.x + globalX, activeCoin.y + globalY, ww/2, wh/2);
+		CP_Graphics_DrawLine(mappedCoinVector.x + size / 2, mappedCoinVector.y + size / 2, ww / 2, wh / 2);
 
-		/*
+		double x = centerVector.x - mappedCoinVector.x;
+		double y = centerVector.y - mappedCoinVector.y;
+		double distance = sqrt(x * x + y * y);
+		//distance = CP_Vector_Distance(centerVector, activeCoin);
+
+		CP_Settings_TextSize(30.0f);
+		sprintf_s(buffer, _countof(buffer), "%5.2f", distance);
+		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 120);
+
+		sprintf_s(buffer, _countof(buffer), "Coin X: %5.2f", mappedCoinVector.x);
+		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 160);
+
+		sprintf_s(buffer, _countof(buffer), "Coin Y: %5.2f", mappedCoinVector.y);
+		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 200);
+
+		sprintf_s(buffer, _countof(buffer), "Plane X: %5.2f", centerVector.x);
+		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 240);
+
+		sprintf_s(buffer, _countof(buffer), "Plane Y: %5.2f", centerVector.y);
+		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 280);
+
+		if (distance < 75) {
+			//Collect coin
+			score += speed;
+			coinAlpha = 0;
+		}
+
+
+		/**********************
 		* DEBUG BOUNDARY SQUARE
-		*/
+		**********************/
 		//CP_Settings_NoFill();
 		//CP_Graphics_DrawRect(bounds.west + globalX, bounds.north + globalY, bounds.width, bounds.height);
 		//CP_Settings_Fill(BLACK);
@@ -363,7 +391,6 @@ void game_update(void) {
 
 		//x2 = cosAx1 − sinAy1
 		//y2 = sinAx1 + cosAy1
-
 		double newVX = cos(rotationAngle) * directionVector.x - sin(rotationAngle) * directionVector.y;
 		double newVY = sin(rotationAngle) * directionVector.x + cos(rotationAngle) * directionVector.y;
 
@@ -372,6 +399,7 @@ void game_update(void) {
 
 		speed = (speed < 0) ? speed + drag : speed - drag;
 		speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
+		speed = (CP_Input_KeyDown(KEY_S)) ? 0.001 : speed;
 		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
 		/*
@@ -426,7 +454,6 @@ void game_update(void) {
 		\***********/
 		CP_Settings_TextSize(40.0f);
 
-		char buffer[50] = { 0 };
 		sprintf_s(buffer, _countof(buffer), "Global X position: %.0f", -globalX);
 		CP_Font_DrawText(buffer, 200, 50);
 
@@ -441,6 +468,9 @@ void game_update(void) {
 
 		sprintf_s(buffer, _countof(buffer), "Game Time: %.1f", CP_System_GetSeconds() - timeOfRestart);
 		CP_Font_DrawText(buffer, 200, 250);
+
+		sprintf_s(buffer, _countof(buffer), "Score: %d", score);
+		CP_Font_DrawText(buffer, 200, 300);
 
 		/*********\
 		| CONTROL |
@@ -515,7 +545,6 @@ void death_update(void) {
 
 	CP_Settings_TextSize(70.0f);
 
-	char buffer[50] = { 0 };
 	sprintf_s(buffer, _countof(buffer), "Score: %d", score);
 	CP_Font_DrawText(buffer, ww / 2, 250);
 
