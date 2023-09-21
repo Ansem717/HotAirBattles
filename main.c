@@ -24,15 +24,16 @@ CP_Image cloudTexture, redhitFlash, coinIMG;
 CP_Color BLACK, BLUE;
 float ww, wh; //window width and window height
 
-int paused, pauseMenuShowing, isIFraming;
+bool paused, pauseMenuShowing, isIFraming, coinTriggered;
 char buffer[50] = { 0 };
+char guide[50] = { 0 };
 
 float globalX, globalY;
 
 CP_Vector directionVector, centerVector;
 float rotationAngle, rotationIncrement, rotationCap;
 
-float speed, speedCap, speedMin, speedIncrement, drag;
+float speed, speedCap, speedMin, speedIncrement, drag, speedBonus;
 
 float iFrameDuration, iFrameStart, flashAlpha;
 int remainingLives, score;
@@ -91,12 +92,13 @@ float deathAlpha;
 int dminutes, dseconds;
 float timeOfRestart;
 
-void death_init(void);
-void death_update(void);
-void death_exit(void);
+
 void game_init(void);
 void game_update(void);
 void game_exit(void);
+void death_init(void);
+void death_update(void);
+void death_exit(void);
 
 void initGlobalVariables(void) {
 	paused = false;
@@ -106,24 +108,25 @@ void initGlobalVariables(void) {
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
 
 	globalX = 0;
-	globalY = bounds.height / 2;
+	globalY = -bounds.height / 2 + 100;
 	directionVector = CP_Vector_Set(0, 1);
 
 	rotationAngle = 0;
-	rotationIncrement = 0; //the increment changes based on speed - the faster you are, the harder it is to turn.
+	rotationIncrement = 0.03f; //the increment changes based on speed - the faster you are, the harder it is to turn.
 	rotationCap = 0.06f;
 
-	speed = 0;
-	speedCap = 20;
+	speed = 10;
+	//speedCap = 20;
 	speedMin = 5; //The plane is always moving!
 	speedIncrement = 0.25f;
 	drag = 0.1f;
+	speedBonus = 3;
 
 	iFrameDuration = 1;
 	iFrameStart = 0;
 	flashAlpha = 0;
 
-	remainingLives = 1;
+	remainingLives = 3;
 	score = 0;
 
 	coinVelocity = 1;
@@ -131,6 +134,9 @@ void initGlobalVariables(void) {
 	coinCap = 10;
 	coinAlpha = 255;
 	coinFadeSpeed = 1;
+	coinTriggered = false;
+
+	sprintf_s(guide, _countof(guide), "Collect the coin for points!");
 }
 
 void initBounds(void) {
@@ -162,7 +168,7 @@ void drawPlayer(CP_Color c) {
 	float centerY = wh / 2;
 
 	float bodyAngle = acos(directionVector.y) * 180 / PI;
-	bodyAngle = (directionVector.x < 0) ? bodyAngle : -bodyAngle;
+	bodyAngle = (directionVector.x <= 0) ? bodyAngle : -bodyAngle;
 
 	
 	if (!isIFraming || CP_System_GetFrameCount() % 10 < 5) {
@@ -212,6 +218,68 @@ void createCoin(void) {
 	activeCoin.x = CP_Random_RangeFloat(bounds.west + ww / 2, bounds.east - ww / 2 - 200);
 	activeCoin.y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
 	mappedCoinVector = CP_Vector_Set(activeCoin.x + globalX, activeCoin.y + globalY);
+	coinAlpha = 255;
+	coinTriggered = false;
+}
+
+/* * * * * * 
+* DRAW COIN *
+ * * * * * */
+void drawCoin(float initialX, float initialY, float size) {
+	mappedCoinVector.x = initialX + globalX + size / 2;
+	mappedCoinVector.y = initialY + globalY + coinYPos + size / 2;
+	CP_Image_Draw(coinIMG, mappedCoinVector.x, mappedCoinVector.y, size, size, coinAlpha);
+	coinYPos += coinVelocity;
+	if (coinYPos > coinCap || coinYPos < -coinCap) coinVelocity *= -1;
+
+	double x = centerVector.x - mappedCoinVector.x;
+	double y = centerVector.y - mappedCoinVector.y;
+	double distance = sqrt(x * x + y * y);
+	//distance = CP_Vector_Distance(centerVector, activeCoin);
+
+	float hPadding = 100;
+	float vPadding = 70;
+	float triangleX = (mappedCoinVector.x + size / 2 > ww - hPadding) ? ww - hPadding : (mappedCoinVector.x + size / 2 < hPadding) ? hPadding : mappedCoinVector.x + size / 2;
+	float triangleY = (mappedCoinVector.y + size / 2 > wh - vPadding) ? wh - vPadding : (mappedCoinVector.y + size / 2 < vPadding) ? vPadding : mappedCoinVector.y + size / 2;
+	float triangleW = 60;
+	float triangleH = 50;
+
+	CP_Vector tv = CP_Vector_Normalize(CP_Vector_Subtract(centerVector, mappedCoinVector));
+
+	float triangleR = acos(tv.y) * 180 / PI;
+	triangleR = (tv.x <= 0) ? triangleR : -triangleR;
+
+	if (!coinTriggered)
+		if (mappedCoinVector.x + size / 2 > ww || mappedCoinVector.x + size / 2 < 0 || mappedCoinVector.y + size / 2 > wh || mappedCoinVector.y + size / 2 < 0)
+			CP_Graphics_DrawTriangleAdvanced(triangleX, triangleY, triangleX - triangleW / 2, triangleY + triangleH, triangleX + triangleW / 2, triangleY + triangleH, triangleR);
+
+	//CP_Settings_TextSize(30.0f);
+	//sprintf_s(buffer, _countof(buffer), "R: %5.2f", triangleR);
+	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 120);
+
+	//sprintf_s(buffer, _countof(buffer), "Y: %5.2f", triangleY);
+	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 160);
+
+	//sprintf_s(buffer, _countof(buffer), "Coin X: %5.2f", mappedCoinVector.x);
+	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 200);
+
+	//sprintf_s(buffer, _countof(buffer), "Coin Y: %5.2f", mappedCoinVector.y);
+	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 240);
+
+	//sprintf_s(buffer, _countof(buffer), "Plane X: %5.2f", centerVector.x);
+	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 280);
+
+	//sprintf_s(buffer, _countof(buffer), "Plane Y: %5.2f", centerVector.y);
+	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 320);
+
+	if (distance < 75 && !coinTriggered) {
+		//Collect coin
+		score += speed;
+		speed += speedBonus;
+		coinAlpha = 0;
+		sprintf_s(guide, _countof(guide), "Explore for a new coin!");
+		coinTriggered = true;
+	}
 }
 
 void game_init(void) {
@@ -325,6 +393,7 @@ void game_update(void) {
 					CP_Engine_SetNextGameState(death_init, death_update, death_exit);
 					return;
 				}
+				speed *= 2;
 				isIFraming = true;
 				flashAlpha = 255;
 				iFrameStart = CP_System_GetSeconds();
@@ -334,44 +403,7 @@ void game_update(void) {
 		/***********\
 		| DRAW COIN |
 		\***********/
-		float size = 80;
-		mappedCoinVector.x = activeCoin.x + globalX + size/2;
-		mappedCoinVector.y = activeCoin.y + globalY + coinYPos + size / 2;
-		CP_Image_Draw(coinIMG, mappedCoinVector.x, mappedCoinVector.y, size, size, coinAlpha);
-		coinYPos += coinVelocity;
-		if (coinYPos > coinCap || coinYPos < -coinCap) coinVelocity *= -1;
-		//DEBUG LINE TOWARDS COIN
-		CP_Settings_StrokeWeight(2.0);
-		CP_Settings_Stroke(BLACK);
-		CP_Graphics_DrawLine(mappedCoinVector.x + size / 2, mappedCoinVector.y + size / 2, ww / 2, wh / 2);
-
-		double x = centerVector.x - mappedCoinVector.x;
-		double y = centerVector.y - mappedCoinVector.y;
-		double distance = sqrt(x * x + y * y);
-		//distance = CP_Vector_Distance(centerVector, activeCoin);
-
-		CP_Settings_TextSize(30.0f);
-		sprintf_s(buffer, _countof(buffer), "%5.2f", distance);
-		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 120);
-
-		sprintf_s(buffer, _countof(buffer), "Coin X: %5.2f", mappedCoinVector.x);
-		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 160);
-
-		sprintf_s(buffer, _countof(buffer), "Coin Y: %5.2f", mappedCoinVector.y);
-		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 200);
-
-		sprintf_s(buffer, _countof(buffer), "Plane X: %5.2f", centerVector.x);
-		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 240);
-
-		sprintf_s(buffer, _countof(buffer), "Plane Y: %5.2f", centerVector.y);
-		CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 280);
-
-		if (distance < 75) {
-			//Collect coin
-			score += speed;
-			coinAlpha = 0;
-		}
-
+		drawCoin(activeCoin.x, activeCoin.y, 80);
 
 		/**********************
 		* DEBUG BOUNDARY SQUARE
@@ -397,9 +429,12 @@ void game_update(void) {
 		directionVector.x = newVX;
 		directionVector.y = newVY;
 
-		speed = (speed < 0) ? speed + drag : speed - drag;
-		speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
-		speed = (CP_Input_KeyDown(KEY_S)) ? 0.001 : speed;
+		//speed = (speed < 0) ? speed + drag : speed - drag;
+		//speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
+		//speed = (CP_Input_KeyDown(KEY_S)) ? 0.001 : speed;
+		//SPEED DAMPENING HAS BEEN REMOVED
+		//Because I'm having the speed be automatic when players collide into objects.
+
 		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
 		/*
@@ -409,7 +444,7 @@ void game_update(void) {
 
 		We can set the value of a variable based on a condition all in one line.
 
-		Looking at this line: 
+		Looking at the line: 
 		speed = (speed < 0) ? speed + drag : speed - drag;
 
 		This is equal to:
@@ -430,10 +465,10 @@ void game_update(void) {
 		There are more negatives than positives, but I really enjoy the compactness.
 		*/
 
-		rotationIncrement = 3 / (20 * speed);
+		//rotationIncrement = 3 / (20 * speed);
 		//Minimum speed is 5; 3/(20*5) = 3/100 = 0.03 :: desired maximum rotation speed when slow
 		//Maximum speed is 20; 3/(20*20) = 3/400 = 0.0075 :: mimimum rotation speed when fast
-		//It's inherent in our brains that items at faster speeds will turn slower.
+		//REMOVED :: When the player doesn't control the speed, this isn't useful.
 
 		globalX += directionVector.x * speed;
 		globalY += directionVector.y * speed;
@@ -442,11 +477,15 @@ void game_update(void) {
 			//if we're out of bounds, teleport to the opposite boundary.
 			globalX *= -1;
 			createClouds(); //no clouds are visible, great time to randomize them!
+			createCoin();
+			sprintf_s(guide, _countof(guide), "");
 		}
 
 		if (globalY > bounds.height / 2 || globalY < -bounds.height / 2) {
 			globalY *= -1;
 			createClouds();
+			createCoin();
+			sprintf_s(guide, _countof(guide), "");
 		}
 
 		/***********\
@@ -472,17 +511,20 @@ void game_update(void) {
 		sprintf_s(buffer, _countof(buffer), "Score: %d", score);
 		CP_Font_DrawText(buffer, 200, 300);
 
+		CP_Settings_TextSize(60.0f);
+		CP_Font_DrawText(guide, ww / 2, 100);
+
 		/*********\
 		| CONTROL |
 		\*********/
 
-		if (CP_Input_KeyDown(KEY_W) || CP_Input_KeyDown(KEY_UP)) {
+		/*if (CP_Input_KeyDown(KEY_W) || CP_Input_KeyDown(KEY_UP)) {
 			speed += speedIncrement;
 		} 
 		
 		if (CP_Input_KeyDown(KEY_S) || CP_Input_KeyDown(KEY_DOWN)) {
 			speed -= speedIncrement;
-		}
+		}*/
 
 		if (CP_Input_KeyDown(KEY_A) || CP_Input_KeyDown(KEY_LEFT)) {
 			rotationAngle -= rotationIncrement;
@@ -505,6 +547,7 @@ void game_update(void) {
 
 			if (CP_System_GetSeconds() >= iFrameStart + iFrameDuration) {
 				isIFraming = false;
+				speed /= 4;
 				flashAlpha = 0;
 			}
 		}
