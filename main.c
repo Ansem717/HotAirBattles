@@ -85,7 +85,8 @@ typedef struct {
 
 Bounds bounds;
 
-CP_Vector activeCoin, mappedCoinVector;
+CP_Vector activeCoin;
+CP_Vector mappedCoinVector;
 float coinYPos, coinVelocity, coinCap, coinAlpha, coinFadeSpeed;
 
 float deathAlpha;
@@ -185,16 +186,6 @@ void drawPlayer(CP_Color c) {
 			bodyAngle							//Rotation
 		);
 	}
-	//DEBUGGING SHAPES
-	/*CP_Settings_Stroke(CP_Color_Create(255, 255, 0, 255));
-	CP_Settings_StrokeWeight(3);
-	CP_Settings_NoFill();
-	CP_Graphics_DrawLineAdvanced(centerX, centerY, directionVector.x * -100 + centerX, directionVector.y * -100 + centerY, rotationAngle);
-	CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
-	CP_Graphics_DrawCircle(centerX - bodyOffsetVector.x, centerY - bodyOffsetVector.y, 70);
-	CP_Settings_StrokeWeight(2);
-	CP_Settings_Stroke(BLACK);
-	CP_Settings_Fill(BLACK);*/
 }
 
 /* * * * * * * * * * * * *
@@ -232,11 +223,12 @@ void drawCoin(float initialX, float initialY, float size) {
 	coinYPos += coinVelocity;
 	if (coinYPos > coinCap || coinYPos < -coinCap) coinVelocity *= -1;
 
-	double x = centerVector.x - mappedCoinVector.x;
-	double y = centerVector.y - mappedCoinVector.y;
+	double x = centerVector.x - mappedCoinVector.x - size / 2;
+	double y = centerVector.y - mappedCoinVector.y - size / 2;
+	
 	double distance = sqrt(x * x + y * y);
-	//distance = CP_Vector_Distance(centerVector, activeCoin);
 
+	//Lock the X and Y value of the triangle's tip based to the edge of the screen if the coin is off screen... with some padding.
 	float hPadding = 100;
 	float vPadding = 70;
 	float triangleX = (mappedCoinVector.x + size / 2 > ww - hPadding) ? ww - hPadding : (mappedCoinVector.x + size / 2 < hPadding) ? hPadding : mappedCoinVector.x + size / 2;
@@ -249,28 +241,13 @@ void drawCoin(float initialX, float initialY, float size) {
 	float triangleR = acos(tv.y) * 180 / PI;
 	triangleR = (tv.x <= 0) ? triangleR : -triangleR;
 
+	CP_Settings_Fill(CP_Color_Create(220, 220, 100, 255));
+	CP_Settings_Stroke(BLACK);
+	CP_Settings_StrokeWeight(2.0);
+
 	if (!coinTriggered)
 		if (mappedCoinVector.x + size / 2 > ww || mappedCoinVector.x + size / 2 < 0 || mappedCoinVector.y + size / 2 > wh || mappedCoinVector.y + size / 2 < 0)
 			CP_Graphics_DrawTriangleAdvanced(triangleX, triangleY, triangleX - triangleW / 2, triangleY + triangleH, triangleX + triangleW / 2, triangleY + triangleH, triangleR);
-
-	//CP_Settings_TextSize(30.0f);
-	//sprintf_s(buffer, _countof(buffer), "R: %5.2f", triangleR);
-	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 120);
-
-	//sprintf_s(buffer, _countof(buffer), "Y: %5.2f", triangleY);
-	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 160);
-
-	//sprintf_s(buffer, _countof(buffer), "Coin X: %5.2f", mappedCoinVector.x);
-	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 200);
-
-	//sprintf_s(buffer, _countof(buffer), "Coin Y: %5.2f", mappedCoinVector.y);
-	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 240);
-
-	//sprintf_s(buffer, _countof(buffer), "Plane X: %5.2f", centerVector.x);
-	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 280);
-
-	//sprintf_s(buffer, _countof(buffer), "Plane Y: %5.2f", centerVector.y);
-	//CP_Font_DrawText(buffer, centerVector.x + size / 2, centerVector.y + 320);
 
 	if (distance < 75 && !coinTriggered) {
 		//Collect coin
@@ -302,6 +279,7 @@ void game_init(void) {
 	CP_Settings_Fill(BLACK);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 	CP_Settings_ImageMode(CP_POSITION_CORNER);
+	CP_System_ShowCursor(false);
 }
 
 void game_update(void) {
@@ -349,20 +327,8 @@ void game_update(void) {
 			
 			float widthScalar = 0.8f;
 			float heightScalar = 0.7f;
-			//DEBUG COLLISION CIRCLE
-			//CP_Settings_NoFill();
-			//CP_Settings_Stroke(CP_Color_Create(255, 0, 0, 255));
-			//CP_Graphics_DrawEllipse(
-			//	activeClouds[i].x + globalX + currentTexture.w/2, 
-			//	activeClouds[i].y + globalY + currentTexture.h/2 + 5, 
-			//	currentTexture.w * widthScalar, //a percentage of actual width 
-			//	currentTexture.h * heightScalar
-			//);
-			//CP_Settings_Fill(BLACK);
-			//CP_Settings_Stroke(BLACK);
-
+			
 			CP_Vector currentCloudVector = CP_Vector_Set(currentCloud.x + globalX + currentTexture.w / 2, currentCloud.y + globalY + currentTexture.h / 2);
-			//CP_Graphics_DrawLine(currentCloudVector.x, currentCloudVector.y, centerVector.x, centerVector.y);
 			
 			/* 
 			to get the radius of the cloud ellipse collision:
@@ -405,13 +371,6 @@ void game_update(void) {
 		\***********/
 		drawCoin(activeCoin.x, activeCoin.y, 80);
 
-		/**********************
-		* DEBUG BOUNDARY SQUARE
-		**********************/
-		//CP_Settings_NoFill();
-		//CP_Graphics_DrawRect(bounds.west + globalX, bounds.north + globalY, bounds.width, bounds.height);
-		//CP_Settings_Fill(BLACK);
-
 		/*************\
 		| DRAW PLAYER |
 		\*************/
@@ -429,11 +388,7 @@ void game_update(void) {
 		directionVector.x = newVX;
 		directionVector.y = newVY;
 
-		//speed = (speed < 0) ? speed + drag : speed - drag;
-		//speed = (speed > speedCap) ? speedCap : (speed < speedMin) ? speedMin : speed;
-		//speed = (CP_Input_KeyDown(KEY_S)) ? 0.001 : speed;
-		//SPEED DAMPENING HAS BEEN REMOVED
-		//Because I'm having the speed be automatic when players collide into objects.
+		directionVector = CP_Vector_Normalize(directionVector);
 
 		rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
@@ -465,11 +420,6 @@ void game_update(void) {
 		There are more negatives than positives, but I really enjoy the compactness.
 		*/
 
-		//rotationIncrement = 3 / (20 * speed);
-		//Minimum speed is 5; 3/(20*5) = 3/100 = 0.03 :: desired maximum rotation speed when slow
-		//Maximum speed is 20; 3/(20*20) = 3/400 = 0.0075 :: mimimum rotation speed when fast
-		//REMOVED :: When the player doesn't control the speed, this isn't useful.
-
 		globalX += directionVector.x * speed;
 		globalY += directionVector.y * speed;
 
@@ -493,23 +443,20 @@ void game_update(void) {
 		\***********/
 		CP_Settings_TextSize(40.0f);
 
-		sprintf_s(buffer, _countof(buffer), "Global X position: %.0f", -globalX);
-		CP_Font_DrawText(buffer, 200, 50);
-
-		sprintf_s(buffer, _countof(buffer), "Global Y position: %.0f", globalY);
-		CP_Font_DrawText(buffer, 200, 100);
-
 		sprintf_s(buffer, _countof(buffer), "Speed: %.0f", speed);
-		CP_Font_DrawText(buffer, 200, 150);
+		CP_Font_DrawText(buffer, 200, 250);
 
 		sprintf_s(buffer, _countof(buffer), "Direction: %.0f", acos(directionVector.y) * 180 / PI);
 		CP_Font_DrawText(buffer, 200, 200);
 
 		sprintf_s(buffer, _countof(buffer), "Game Time: %.1f", CP_System_GetSeconds() - timeOfRestart);
-		CP_Font_DrawText(buffer, 200, 250);
+		CP_Font_DrawText(buffer, 200, 50);
 
 		sprintf_s(buffer, _countof(buffer), "Score: %d", score);
-		CP_Font_DrawText(buffer, 200, 300);
+		CP_Font_DrawText(buffer, 200, 150);
+
+		sprintf_s(buffer, _countof(buffer), "Lives: %d", remainingLives);
+		CP_Font_DrawText(buffer, 200, 100);
 
 		CP_Settings_TextSize(60.0f);
 		CP_Font_DrawText(guide, ww / 2, 100);
@@ -517,15 +464,6 @@ void game_update(void) {
 		/*********\
 		| CONTROL |
 		\*********/
-
-		/*if (CP_Input_KeyDown(KEY_W) || CP_Input_KeyDown(KEY_UP)) {
-			speed += speedIncrement;
-		} 
-		
-		if (CP_Input_KeyDown(KEY_S) || CP_Input_KeyDown(KEY_DOWN)) {
-			speed -= speedIncrement;
-		}*/
-
 		if (CP_Input_KeyDown(KEY_A) || CP_Input_KeyDown(KEY_LEFT)) {
 			rotationAngle -= rotationIncrement;
 		} else if (CP_Input_KeyDown(KEY_D) || CP_Input_KeyDown(KEY_RIGHT)) {
