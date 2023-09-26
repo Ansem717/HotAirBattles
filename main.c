@@ -34,7 +34,7 @@ float globalX, globalY;
 CP_Vector directionVector, centerVector;
 float rotationAngle, rotationIncrement, rotationCap;
 
-float speed, speedCap, speedMin, speedIncrement, drag, speedBonus;
+float speed, speedMin, speedIncrement, drag, speedBonus;
 
 float iFrameDuration, iFrameStart, flashAlpha;
 int remainingLives, score;
@@ -301,8 +301,7 @@ void initGlobalVariables() {
 	rotationCap = 0.06f;
 
 	speed = 10;
-	//speedCap = 20;
-	speedMin = 5; //The plane is always moving!
+	speedMin = 8;
 	speedIncrement = 0.25f;
 	drag = 0.1f;
 	speedBonus = 3;
@@ -547,6 +546,7 @@ void game_update() {
 
 	rotationAngle = (rotationAngle > rotationCap) ? rotationCap : (rotationAngle < -rotationCap) ? -rotationCap : rotationAngle;
 
+	speed = (speed < speedMin) ? speedMin : speed;
 	/*
 	The statements above are known as Ternary Operators:
 
@@ -555,16 +555,14 @@ void game_update() {
 	We can set the value of a variable based on a condition all in one line.
 
 	Looking at the line:
-	speed = (speed < 0) ? speed + drag : speed - drag;
+	speed = (speed < speedMin) ? speedMin : speed;
 
 	This is equal to:
-	if (speed < 0) {
-		speed = speed + drag;
+	if (speed < speedMin) {
+		speed = speedMin;
 	} else {
-		speed = speed - drag;
+		speed = speed;
 	}
-
-	Notice how the speedCap and rotationCap lines are if-else-if-else combinations.
 
 	The benefit is simplifying line usage for simple conditions like this.
 	However,
@@ -732,8 +730,6 @@ void death_update() {
 
 	if (CP_Input_KeyReleased(KEY_R)) {
 		CP_Engine_SetNextGameState(game_init, game_update, game_exit);
-	} else if (CP_Input_KeyReleased(KEY_Q)) {
-		CP_Engine_Terminate();
 	}
 }
 
@@ -797,23 +793,20 @@ void pause_update() {
 		buttonWidth, buttonHeight, buttonCornerRadius,
 		buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
 		&quitButtonHovered, buttonQuit);
-
-	/*if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-		CP_Engine_SetNextGameState(game_init, game_update, game_exit);
-	} else if (CP_Input_KeyReleased(KEY_R)) {
-		CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);
-	} else if (CP_Input_KeyReleased(KEY_Q) || CP_Input_KeyReleased(KEY_SPACE)) {
-		CP_Engine_Terminate();
-	}*/
-
 }
 
 void pause_exit() {
 	sprintf_s(playText, _countof(playText), "CONTINUE");
 }
 
+void forceQuit() {
+	if (CP_Input_KeyReleased(KEY_Q)) {
+		CP_Engine_Terminate();
+	}
+}
 
 int main(void) {
+	CP_Engine_SetPreUpdateFunction(forceQuit);
 	CP_Engine_SetNextGameState(logo_init, logo_update, logo_exit);
 	CP_Engine_Run();
 	return 0;
