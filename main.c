@@ -39,6 +39,9 @@ float speed, speedCap, speedMin, speedIncrement, drag, speedBonus;
 float iFrameDuration, iFrameStart, flashAlpha;
 int remainingLives, score;
 
+float buttonWidth, buttonHeight, buttonCornerRadius;
+CP_Color buttonDefaultColor, buttonHoverColor, buttonOnPressColor;
+
 typedef struct {
 	float size;
 	float x;
@@ -153,19 +156,20 @@ float finishingSeconds = 0;
 /// END IMPORT FROM FIRST ASSIGNMENT
 /////////////////////////
 
-void logo_init(void);
-void logo_update(void);
-void logo_exit(void);
-void game_init(void);
-void game_update(void);
-void game_exit(void);
-void death_init(void);
-void death_update(void);
-void death_exit(void);
-void pause_update(void);
-void pause_exit(void);
+void logo_init();
+void logo_update();
+void logo_exit();
+void game_init();
+void game_update();
+void game_exit();
+void death_init();
+void death_update();
+void death_exit();
+void pause_init();
+void pause_update();
+void pause_exit();
 
-void logo_init(void) {
+void logo_init() {
 	RED = CP_Color_Create(220, 17, 39, 255);
 	DARK_RED = CP_Color_Create(133, 0, 34, 255);
 	WHITE = CP_Color_Create(255, 255, 255, 255);
@@ -178,9 +182,10 @@ void logo_init(void) {
 	sprintf_s(playText, _countof(playText), "PLAY!");
 
 	CP_System_Fullscreen();
+	//CP_System_SetWindowSize(1000, 1000);
 }
 
-void logo_update(void) {
+void logo_update() {
 	CP_Graphics_ClearBackground(RED);
 	int width = CP_System_GetWindowWidth();
 	int height = CP_System_GetWindowHeight();
@@ -254,10 +259,19 @@ void logo_update(void) {
 
 		if (alpha <= 0) {
 			KEYFRAME_HOLD_DONE = 0;
-			CP_Graphics_ClearBackground(BLUE);
+			CP_Settings_Fill(BLUE);
+			CP_Graphics_DrawRect(0, 0, width, height);
 
 			finishingSeconds = (!finishingSeconds) ? CP_System_GetSeconds() : finishingSeconds;
-			CP_Engine_SetNextGameState(game_init, pause_update, pause_exit);
+			game_init(); 
+			//This is a very awkward call to Game Init, 
+			// to establish some varaibles before calling the pause functions
+			//This function call can't really move from this spot. 
+			//The better way to do it is not to init values based on which game-state I'm in
+			//but instead init values based on when I'll call that gamestate.
+			//So instead of Pause, Game, and Death init, I'd have "Master" init for ALL variables
+			//and then small inits to change those variables specific to each gamestate.
+			CP_Engine_SetNextGameState(pause_init, pause_update, pause_exit);
 		}
 	} else {
 		//When the program loads, nothing is ready, so we wait for 0.75 seconds and then start the animations.
@@ -266,11 +280,11 @@ void logo_update(void) {
 
 }
 
-void logo_exit(void) {
+void logo_exit() {
 	CP_Image_Free(&logo);
 }
 
-void initGlobalVariables(void) {
+void initGlobalVariables() {
 	pauseMenuShowing = false;
 	isIFraming = false;
 
@@ -309,7 +323,7 @@ void initGlobalVariables(void) {
 	
 }
 
-void initBounds(void) {
+void initBounds() {
 	bounds.north = -wh;
 	bounds.east = 2 * ww;
 	bounds.south = 2 * wh;
@@ -360,7 +374,7 @@ void drawPlayer(CP_Color c) {
 /* * * * * * * * * * * * *
 * RANDOMLY CREATE CLOUDS *
 * * * * * * * * * * * * */
-void createClouds(void) {
+void createClouds() {
 	//This for loop simply assigns random positions and images to the clouds array.
 	//It is recalled every time the player warps through the screen.
 	for (int i = 0; i < CLOUD_ARR_SIZE; i++) {
@@ -374,7 +388,7 @@ void createClouds(void) {
 /* * * * * * * * * * * *
 * RANDOMLY CREATE COIN *
 * * * * * * * * * * * */
-void createCoin(void) {
+void createCoin() {
 	activeCoin.x = CP_Random_RangeFloat(bounds.west + ww / 2, bounds.east - ww / 2 - 200);
 	activeCoin.y = CP_Random_RangeFloat(bounds.north + wh / 2, bounds.south - wh / 2 - 100);
 	mappedCoinVector = CP_Vector_Set(activeCoin.x + globalX, activeCoin.y + globalY);
@@ -430,8 +444,7 @@ void drawCoin(float initialX, float initialY, float size) {
 	CP_Settings_Fill(BLACK);
 }
 
-void game_init(void) {
-	CP_System_Fullscreen();
+void game_init() {
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	redhitFlash = CP_Image_Load("Assets/redhit.png");
 	coinIMG = CP_Image_Load("Assets/coin.png");
@@ -448,14 +461,14 @@ void game_init(void) {
 	CP_Settings_Fill(BLACK);
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 	CP_Settings_ImageMode(CP_POSITION_CORNER);
-	CP_System_ShowCursor(false);
 }
 
-void game_update(void) {
+void game_update() {
 	
 	// DRAW BACKGROUND (Sky)
 	CP_Graphics_ClearBackground(BLUE);
 	CP_Settings_Fill(BLACK);
+	CP_System_ShowCursor(false);
 
 	/*************\
 	| DRAW PLAYER |
@@ -634,15 +647,49 @@ void game_update(void) {
 	| PAUSE MENU |
 	\************/
 	if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-		CP_Engine_SetNextGameState(NULL, pause_update, pause_exit);
+		CP_Engine_SetNextGameState(pause_init, pause_update, pause_exit);
 	}
 }
 
-void game_exit(void) {
+void game_exit() {
 	
 }
 
-void death_init(void) {
+void buttonPlay() {CP_Engine_SetNextGameState(NULL, game_update, game_exit); }
+void buttonPlayForced() {CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);}
+void buttonQuit() { CP_Engine_Terminate();}
+
+void drawButton(const char *text, float x, float y, float w, float h, float cornerRadius, CP_Color defCol, CP_Color hovCol, CP_Color hitCol, void (*callback)()) {
+	float mouseX = CP_Input_GetMouseX();
+	float mouseY = CP_Input_GetMouseY();
+	float sizeMultiplier = 1;
+	if (mouseX >= x &&
+		mouseX <= x + w &&
+		mouseY >= y &&
+		mouseY <= y + h) {
+		//ON HOVER
+		CP_Settings_Fill(hovCol);
+		sizeMultiplier = 1.1;
+		if (CP_Input_MouseDown(MOUSE_BUTTON_1)) {
+			CP_Settings_Fill(hitCol);
+		}
+		if (CP_Input_MouseReleased(MOUSE_BUTTON_1)) {
+			(*callback)();
+		}
+	} else {
+		//NOT HOVER
+		CP_Settings_Fill(defCol);
+		sizeMultiplier = 1;
+	}
+	
+	CP_Settings_Stroke(BLACK);
+	CP_Graphics_DrawRectAdvanced(x, y, w * sizeMultiplier, h * sizeMultiplier, 0, cornerRadius);
+	CP_Settings_TextSize(50.0f);
+	CP_Settings_Fill(WHITE);
+	CP_Font_DrawText(text, x + w/2, y + h/2);
+}
+
+void death_init() {
 	deathAlpha = 0;
 	int timeOfDeath = CP_System_GetSeconds() - timeOfRestart;
 	dminutes = timeOfDeath / 60;
@@ -650,7 +697,7 @@ void death_init(void) {
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 }
 
-void death_update(void) {
+void death_update() {
 	BLACK.a = deathAlpha;
 	CP_Settings_Fill(BLACK);
 	CP_Graphics_DrawRect(0, 0, ww, wh);
@@ -683,20 +730,49 @@ void death_update(void) {
 	}
 }
 
-void death_exit(void) {
+void death_exit() {
 	timeOfRestart = CP_System_GetSeconds();
 }
 
-void pause_update(void) {
+void pause_init() {
+	buttonWidth = 270;
+	buttonHeight = 100;
+	buttonCornerRadius = 20;
+	buttonDefaultColor = CP_Color_Create(60, 60, 120, 200);
+	buttonHoverColor = CP_Color_Create(50, 0, 50, 25);
+	buttonOnPressColor = CP_Color_Create(100, 0, 0, 200);
+
+	CP_System_ShowCursor(true);
+}
+
+void pause_update() {
 	if (pauseMenuShowing) {
-		//close pause menu
-		if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-			CP_Engine_SetNextGameState(NULL, game_update, game_exit);
+		drawButton(playText, 
+			ww / 2 - buttonWidth / 2, 
+			wh / 2 - buttonHeight / 2 - buttonHeight + 20, 
+			buttonWidth, buttonHeight, buttonCornerRadius, 
+			buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+			buttonPlay);
+		drawButton("RESET",
+			ww / 2 - buttonWidth / 2, 
+			wh / 2 - buttonHeight / 2 + 40, 
+			buttonWidth, buttonHeight, buttonCornerRadius, 
+			buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+			buttonPlayForced);
+		drawButton("QUIT", 
+			ww / 2 - buttonWidth / 2, 
+			wh / 2 - buttonHeight / 2 + buttonHeight + 60, 
+			buttonWidth, buttonHeight, buttonCornerRadius, 
+			buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+			buttonQuit);
+
+		/*if (CP_Input_KeyReleased(KEY_ESCAPE)) {
+			CP_Engine_SetNextGameState(game_init, game_update, game_exit);
 		} else if (CP_Input_KeyReleased(KEY_R)) {
 			CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);
 		} else if (CP_Input_KeyReleased(KEY_Q) || CP_Input_KeyReleased(KEY_SPACE)) {
 			CP_Engine_Terminate();
-		}
+		}*/
 	} else {
 
 		CP_Settings_Fill(CP_Color_Create(50, 50, 50, 175));
@@ -708,16 +784,11 @@ void pause_update(void) {
 		CP_Settings_TextSize(100.0f);
 		CP_Font_DrawText("MENU", ww / 2, wh * 5 / 16);
 
-		CP_Settings_TextSize(50.0f);
-		CP_Font_DrawText(playText, ww / 2, wh * 7 / 16);
-		CP_Font_DrawText("QUIT", ww / 2, wh * 17 / 32);
-		CP_Font_DrawText("RESET", ww / 2, wh * 20 / 32);
-
 		pauseMenuShowing = true;
 	}
 }
 
-void pause_exit(void) {
+void pause_exit() {
 	pauseMenuShowing = false;
 	sprintf_s(playText, _countof(playText), "CONTINUE");
 }
