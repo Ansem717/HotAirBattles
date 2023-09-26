@@ -24,7 +24,7 @@ CP_Image cloudTexture, redhitFlash, coinIMG;
 CP_Color BLACK, BLUE;
 float ww, wh; //window width and window height
 
-bool pauseMenuShowing, isIFraming, coinTriggered;
+bool isIFraming, coinTriggered;
 char buffer[50] = { 0 };
 char guide[50] = { 0 };
 char playText[15] = { 0 };
@@ -41,6 +41,9 @@ int remainingLives, score;
 
 float buttonWidth, buttonHeight, buttonCornerRadius;
 CP_Color buttonDefaultColor, buttonHoverColor, buttonOnPressColor;
+CP_Image menuBackground;
+bool printBackground;
+bool playButtonHovered, resetButtonHovered, quitButtonHovered;
 
 typedef struct {
 	float size;
@@ -263,7 +266,7 @@ void logo_update() {
 			CP_Graphics_DrawRect(0, 0, width, height);
 
 			finishingSeconds = (!finishingSeconds) ? CP_System_GetSeconds() : finishingSeconds;
-			game_init(); 
+			game_init();
 			//This is a very awkward call to Game Init, 
 			// to establish some varaibles before calling the pause functions
 			//This function call can't really move from this spot. 
@@ -285,7 +288,6 @@ void logo_exit() {
 }
 
 void initGlobalVariables() {
-	pauseMenuShowing = false;
 	isIFraming = false;
 
 	activeClouds = malloc(CLOUD_ARR_SIZE * sizeof * activeClouds);
@@ -320,7 +322,7 @@ void initGlobalVariables() {
 	coinTriggered = false;
 
 	sprintf_s(guide, _countof(guide), "Collect the coin for points!");
-	
+
 }
 
 void initBounds() {
@@ -354,7 +356,7 @@ void drawPlayer(CP_Color c) {
 	float bodyAngle = acos(directionVector.y) * 180 / PI;
 	bodyAngle = (directionVector.x <= 0) ? bodyAngle : -bodyAngle;
 
-	
+
 	if (!isIFraming || CP_System_GetFrameCount() % 10 < 5) {
 		//Only draw the body if we're not iFraming OR if we are iFraming, the only draw the body every other frame (flash).
 
@@ -396,7 +398,7 @@ void createCoin() {
 	coinTriggered = false;
 }
 
-/* * * * * * 
+/* * * * * *
 * DRAW COIN *
  * * * * * */
 void drawCoin(float initialX, float initialY, float size) {
@@ -408,7 +410,7 @@ void drawCoin(float initialX, float initialY, float size) {
 
 	double x = centerVector.x - mappedCoinVector.x - size / 2;
 	double y = centerVector.y - mappedCoinVector.y - size / 2;
-	
+
 	double distance = sqrt(x * x + y * y);
 
 	//Lock the X and Y value of the triangle's tip based to the edge of the screen if the coin is off screen... with some padding.
@@ -448,7 +450,7 @@ void game_init() {
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	redhitFlash = CP_Image_Load("Assets/redhit.png");
 	coinIMG = CP_Image_Load("Assets/coin.png");
-	
+
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
 
@@ -464,7 +466,7 @@ void game_init() {
 }
 
 void game_update() {
-	
+
 	// DRAW BACKGROUND (Sky)
 	CP_Graphics_ClearBackground(BLUE);
 	CP_Settings_Fill(BLACK);
@@ -482,13 +484,13 @@ void game_update() {
 		Cloud currentCloud = activeClouds[i];
 		TextureRect currentTexture = CLOUD_TEXTURE_POSITIONS[currentCloud.img_id];
 		CP_Image_DrawSubImage(cloudTexture, currentCloud.x + globalX, currentCloud.y + globalY, currentCloud.size * currentTexture.w, currentCloud.size * currentTexture.h, currentTexture.x0, currentTexture.y0, currentTexture.x1, currentTexture.y1, 255);
-			
+
 		float widthScalar = 0.8f;
 		float heightScalar = 0.7f;
-			
+
 		CP_Vector currentCloudVector = CP_Vector_Set(currentCloud.x + globalX + currentTexture.w / 2, currentCloud.y + globalY + currentTexture.h / 2);
-			
-		/* 
+
+		/*
 		to get the radius of the cloud ellipse collision:
 		r = ab / root(a * a * sin^2(theta) + b * b * cos^2(theta))
 		where:
@@ -502,11 +504,11 @@ void game_update() {
 
 		double a = currentTexture.w * widthScalar / 2;
 		double b = currentTexture.h * heightScalar / 2;
-		double x = centerVector.x - currentCloudVector.x; 
+		double x = centerVector.x - currentCloudVector.x;
 		double y = centerVector.y - currentCloudVector.y;
 		double distance = sqrt(x * x + y * y);
 		double t = acos(x / distance);
-		double ellipseRadiusTowardsPlayer = a*b / sqrt(a*a*sin(t)*sin(t) + b*b*cos(t)*cos(t));
+		double ellipseRadiusTowardsPlayer = a * b / sqrt(a * a * sin(t) * sin(t) + b * b * cos(t) * cos(t));
 
 		//COLISION
 		if (!isIFraming && ellipseRadiusTowardsPlayer + 35 > distance) {
@@ -552,7 +554,7 @@ void game_update() {
 
 	We can set the value of a variable based on a condition all in one line.
 
-	Looking at the line: 
+	Looking at the line:
 	speed = (speed < 0) ? speed + drag : speed - drag;
 
 	This is equal to:
@@ -564,10 +566,10 @@ void game_update() {
 
 	Notice how the speedCap and rotationCap lines are if-else-if-else combinations.
 
-	The benefit is simplifying line usage for simple conditions like this. 
-	However, 
-		it can be confusing to many people, 
-		it could look unpleasant if it grows too large, 
+	The benefit is simplifying line usage for simple conditions like this.
+	However,
+		it can be confusing to many people,
+		it could look unpleasant if it grows too large,
 		it's only useful for simple conditions,
 		and it can be hard to make changes.
 	There are more negatives than positives, but I really enjoy the compactness.
@@ -576,7 +578,7 @@ void game_update() {
 	globalX += directionVector.x * speed;
 	globalY += directionVector.y * speed;
 
-	if (globalX > bounds.width/2 || globalX < -bounds.width/2) {
+	if (globalX > bounds.width / 2 || globalX < -bounds.width / 2) {
 		//if we're out of bounds, teleport to the opposite boundary.
 		globalX *= -1;
 		createClouds(); //no clouds are visible, great time to randomize them!
@@ -652,41 +654,46 @@ void game_update() {
 }
 
 void game_exit() {
-	
+
 }
 
-void buttonPlay() {CP_Engine_SetNextGameState(NULL, game_update, game_exit); }
-void buttonPlayForced() {CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);}
-void buttonQuit() { CP_Engine_Terminate();}
+void buttonPlay() { CP_Engine_SetNextGameState(NULL, game_update, game_exit); }
+void buttonPlayForced() { CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit); }
+void buttonQuit() { CP_Engine_Terminate(); }
 
-void drawButton(const char *text, float x, float y, float w, float h, float cornerRadius, CP_Color defCol, CP_Color hovCol, CP_Color hitCol, void (*callback)()) {
+void drawButton(const char* text, float x, float y, float w, float h, float cornerRadius, CP_Color defCol, CP_Color hovCol, CP_Color hitCol, bool *toggleHover, void (*callback)()) {
 	float mouseX = CP_Input_GetMouseX();
 	float mouseY = CP_Input_GetMouseY();
-	float sizeMultiplier = 1;
 	if (mouseX >= x &&
 		mouseX <= x + w &&
 		mouseY >= y &&
 		mouseY <= y + h) {
 		//ON HOVER
 		CP_Settings_Fill(hovCol);
-		sizeMultiplier = 1.1;
+		CP_Settings_StrokeWeight(6);
 		if (CP_Input_MouseDown(MOUSE_BUTTON_1)) {
 			CP_Settings_Fill(hitCol);
 		}
 		if (CP_Input_MouseReleased(MOUSE_BUTTON_1)) {
-			(*callback)();
+			(*callback)(); //Run the callback function via pointer
 		}
+		*toggleHover = true; 
+		//We passed the address into the pointer to dynamically change the toggle based on 
+		// which button was hovered.
+		//This ends up being a weird balancing of conditional statements just to check when to
+		// reprint the screenshot of the transparent background to hide hover-animation artifacts.
 	} else {
+		if (*toggleHover) *toggleHover = false;
 		//NOT HOVER
 		CP_Settings_Fill(defCol);
-		sizeMultiplier = 1;
+		CP_Settings_StrokeWeight(1);
 	}
-	
+
 	CP_Settings_Stroke(BLACK);
-	CP_Graphics_DrawRectAdvanced(x, y, w * sizeMultiplier, h * sizeMultiplier, 0, cornerRadius);
+	CP_Graphics_DrawRectAdvanced(x, y, w, h, 0, cornerRadius);
 	CP_Settings_TextSize(50.0f);
 	CP_Settings_Fill(WHITE);
-	CP_Font_DrawText(text, x + w/2, y + h/2);
+	CP_Font_DrawText(text, x + w / 2, y + h / 2);
 }
 
 void death_init() {
@@ -743,53 +750,65 @@ void pause_init() {
 	buttonOnPressColor = CP_Color_Create(100, 0, 0, 200);
 
 	CP_System_ShowCursor(true);
+
+	//Draw the transparent box, then take a screenshot of it then redraw the screenshot. 
+	//This way, when my button hover changes size, I'm able to "unhover" the button
+	//while still maintaining the visual data behind the menu
+	CP_Settings_Fill(CP_Color_Create(50, 50, 50, 200));
+	CP_Graphics_DrawRect(ww / 4, wh / 4, ww / 2, wh / 2);
+	menuBackground = CP_Image_Screenshot(ww / 4, wh / 4, ww / 2, wh / 2);
+	printBackground = true;
+	playButtonHovered = false;
+	resetButtonHovered = false;
+	quitButtonHovered = false;
 }
 
 void pause_update() {
-	if (pauseMenuShowing) {
-		drawButton(playText, 
-			ww / 2 - buttonWidth / 2, 
-			wh / 2 - buttonHeight / 2 - buttonHeight + 20, 
-			buttonWidth, buttonHeight, buttonCornerRadius, 
-			buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
-			buttonPlay);
-		drawButton("RESET",
-			ww / 2 - buttonWidth / 2, 
-			wh / 2 - buttonHeight / 2 + 40, 
-			buttonWidth, buttonHeight, buttonCornerRadius, 
-			buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
-			buttonPlayForced);
-		drawButton("QUIT", 
-			ww / 2 - buttonWidth / 2, 
-			wh / 2 - buttonHeight / 2 + buttonHeight + 60, 
-			buttonWidth, buttonHeight, buttonCornerRadius, 
-			buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
-			buttonQuit);
-
-		/*if (CP_Input_KeyReleased(KEY_ESCAPE)) {
-			CP_Engine_SetNextGameState(game_init, game_update, game_exit);
-		} else if (CP_Input_KeyReleased(KEY_R)) {
-			CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);
-		} else if (CP_Input_KeyReleased(KEY_Q) || CP_Input_KeyReleased(KEY_SPACE)) {
-			CP_Engine_Terminate();
-		}*/
-	} else {
-
-		CP_Settings_Fill(CP_Color_Create(50, 50, 50, 175));
-		CP_Graphics_DrawRect(ww / 4, wh / 4, ww / 2, wh / 2);
-
-		CP_Settings_Fill(CP_Color_Create(255, 255, 255, 255));
-		CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
-
-		CP_Settings_TextSize(100.0f);
-		CP_Font_DrawText("MENU", ww / 2, wh * 5 / 16);
-
-		pauseMenuShowing = true;
+	if (playButtonHovered || resetButtonHovered || quitButtonHovered) {
+		printBackground = true;
 	}
+	if (!playButtonHovered && !resetButtonHovered && !quitButtonHovered && printBackground) {
+		CP_Image_Draw(menuBackground, ww / 4, wh / 4, ww / 2, wh / 2, 255);
+		printBackground = false;
+		playButtonHovered = false;
+		resetButtonHovered = false;
+		quitButtonHovered = false;
+	}
+	CP_Settings_Fill(WHITE);
+	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+	CP_Settings_TextSize(100.0f);
+	CP_Font_DrawText("MENU", ww / 2, wh * 5 / 16);
+
+	drawButton(playText,
+		ww / 2 - buttonWidth / 2,
+		wh / 2 - buttonHeight / 2 - buttonHeight + 20,
+		buttonWidth, buttonHeight, buttonCornerRadius,
+		buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+		&playButtonHovered, buttonPlay);
+	drawButton("RESET",
+		ww / 2 - buttonWidth / 2,
+		wh / 2 - buttonHeight / 2 + 40,
+		buttonWidth, buttonHeight, buttonCornerRadius,
+		buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+		&resetButtonHovered, buttonPlayForced);
+	drawButton("QUIT",
+		ww / 2 - buttonWidth / 2,
+		wh / 2 - buttonHeight / 2 + buttonHeight + 60,
+		buttonWidth, buttonHeight, buttonCornerRadius,
+		buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+		&quitButtonHovered, buttonQuit);
+
+	/*if (CP_Input_KeyReleased(KEY_ESCAPE)) {
+		CP_Engine_SetNextGameState(game_init, game_update, game_exit);
+	} else if (CP_Input_KeyReleased(KEY_R)) {
+		CP_Engine_SetNextGameStateForced(game_init, game_update, game_exit);
+	} else if (CP_Input_KeyReleased(KEY_Q) || CP_Input_KeyReleased(KEY_SPACE)) {
+		CP_Engine_Terminate();
+	}*/
+
 }
 
 void pause_exit() {
-	pauseMenuShowing = false;
 	sprintf_s(playText, _countof(playText), "CONTINUE");
 }
 
