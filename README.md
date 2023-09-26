@@ -1,6 +1,3 @@
-# HotAirBattles
-A small independent game to practice concepts in CProcessing.
+# Topdown Plane Game
 
-This repo is no longer in use as the project is being used for a school assignment.
-Visit https://github.com/DigiPen-GAM100F23/cprocessing-2-Ansem717
-
+A small independent game to practice concepts in CProcessing - used for Assignment 2 and Assignment 3 in GAM-100.
