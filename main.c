@@ -355,7 +355,7 @@ void drawPlayer(CP_Color c) {
 	float bodyAngle = acos(directionVector.y) * 180 / PI;
 	bodyAngle = (directionVector.x <= 0) ? bodyAngle : -bodyAngle;
 
-
+\
 	if (!isIFraming || CP_System_GetFrameCount() % 10 < 5) {
 		//Only draw the body if we're not iFraming OR if we are iFraming, the only draw the body every other frame (flash).
 
@@ -449,6 +449,7 @@ void game_init() {
 	cloudTexture = CP_Image_Load("Assets/cloudtextures.png");
 	redhitFlash = CP_Image_Load("Assets/redhit.png");
 	coinIMG = CP_Image_Load("Assets/coin.png");
+	BLACK.a = 255;
 
 	ww = CP_System_GetWindowWidth();
 	wh = CP_System_GetWindowHeight();
@@ -471,10 +472,6 @@ void game_update() {
 	CP_Settings_Fill(BLACK);
 	CP_System_ShowCursor(false);
 
-	/*************\
-	| DRAW PLAYER |
-	\*************/
-	drawPlayer(BLACK);
 
 	/*************\
 	| DRAW CLOUDS |
@@ -524,6 +521,12 @@ void game_update() {
 			iFrameStart = CP_System_GetSeconds();
 		}
 	}
+
+
+	/*************\
+	| DRAW PLAYER |
+	\*************/
+	drawPlayer(BLACK);
 
 	/***********\
 	| DRAW COIN |
@@ -700,6 +703,10 @@ void death_init() {
 	dminutes = timeOfDeath / 60;
 	dseconds = timeOfDeath % 60;
 	CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+	CP_System_ShowCursor(true);
+	buttonDefaultColor = CP_Color_Create(128, 0, 0, 255);
+	buttonHoverColor = CP_Color_Create(255, 0, 128, 255);
+	buttonOnPressColor = CP_Color_Create(255, 0, 0, 255);
 }
 
 void death_update() {
@@ -722,11 +729,20 @@ void death_update() {
 	sprintf_s(buffer, _countof(buffer), "Gametime: %dm%ds", dminutes, dseconds);
 	CP_Font_DrawText(buffer, ww / 2, 320);
 
-	CP_Font_DrawText("Press R to restart.", ww / 2, wh - 250);
 
-	CP_Font_DrawText("Press Q to quit.", ww / 2, wh - 150);
+	drawButton("Restart",
+		ww / 2 - buttonWidth / 2, wh - 350 - buttonHeight / 2,
+		buttonWidth, buttonHeight, buttonCornerRadius,
+		buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+		&resetButtonHovered, buttonPlayForced);
 
-	deathAlpha += 1;
+	drawButton("Quit",
+		ww / 2 - buttonWidth / 2, wh - 200 - buttonHeight / 2,
+		buttonWidth, buttonHeight, buttonCornerRadius,
+		buttonDefaultColor, buttonHoverColor, buttonOnPressColor,
+		&quitButtonHovered, buttonQuit);
+
+	deathAlpha += 2;
 
 	if (CP_Input_KeyReleased(KEY_R)) {
 		CP_Engine_SetNextGameState(game_init, game_update, game_exit);
