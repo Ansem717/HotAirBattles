@@ -27,6 +27,7 @@ float ww, wh; //window width and window height
 bool pauseMenuShowing, isIFraming, coinTriggered;
 char buffer[50] = { 0 };
 char guide[50] = { 0 };
+char playText[15] = { 0 };
 
 float globalX, globalY;
 
@@ -120,7 +121,6 @@ int KEYFRAME_LOGO_COMBINE_DONE = 0;
 int KEYFRAME_LOGO_SEISMIC_FALL_DONE = 0;
 int KEYFRAME_TITLE_WIPE_DONE = 0;
 int KEYFRAME_HOLD_DONE = 0;
-int KEYFRAME_FADE_OUT_DONE = 0;
 
 // First Animation - the two parts of the logo crash into each other. 
 float YIncrement = 0; //the current change in height for the first half drop
@@ -145,7 +145,7 @@ float startingSeconds = 0; //When "Hold" begins, this value will be set to some 
 
 // Fifth Animation - Fade Out
 float alpha = 255;
-float alphaSpeed = 15;
+float alphaSpeed = 30;
 
 // Once everything is cleared, wait a brief moment before the logo disappears. 
 float finishingSeconds = 0;
@@ -174,6 +174,8 @@ void logo_init(void) {
 	BLUE = CP_Color_Create(32, 192, 255, 255);
 
 	logo = CP_Image_Load("Assets/DigiPen_BLACK.png");
+
+	sprintf_s(playText, _countof(playText), "PLAY!");
 
 	CP_System_Fullscreen();
 }
@@ -252,18 +254,11 @@ void logo_update(void) {
 
 		if (alpha <= 0) {
 			KEYFRAME_HOLD_DONE = 0;
-			KEYFRAME_FADE_OUT_DONE = 1;
-		}
-	} else if (KEYFRAME_FADE_OUT_DONE) {
-		//The splash screen is done, so now we wait for a BRIEF moment, then terminate.
-		CP_Graphics_ClearBackground(BLUE);
+			CP_Graphics_ClearBackground(BLUE);
 
-		finishingSeconds = (!finishingSeconds) ? CP_System_GetSeconds() : finishingSeconds;
-
-		if (CP_System_GetSeconds() >= finishingSeconds + 0.4) {
+			finishingSeconds = (!finishingSeconds) ? CP_System_GetSeconds() : finishingSeconds;
 			CP_Engine_SetNextGameState(game_init, pause_update, pause_exit);
 		}
-
 	} else {
 		//When the program loads, nothing is ready, so we wait for 0.75 seconds and then start the animations.
 		if (CP_System_GetSeconds() > 0.75) KEYFRAME_READY = 1;
@@ -311,6 +306,7 @@ void initGlobalVariables(void) {
 	coinTriggered = false;
 
 	sprintf_s(guide, _countof(guide), "Collect the coin for points!");
+	
 }
 
 void initBounds(void) {
@@ -709,13 +705,13 @@ void pause_update(void) {
 		CP_Settings_Fill(CP_Color_Create(255, 255, 255, 255));
 		CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
-		CP_Settings_TextSize(70.0f);
+		CP_Settings_TextSize(100.0f);
 		CP_Font_DrawText("MENU", ww / 2, wh * 5 / 16);
 
 		CP_Settings_TextSize(50.0f);
-		CP_Font_DrawText("Press ESC to Go Back", ww / 2, wh * 7 / 16);
-		CP_Font_DrawText("Press Q to Quit", ww / 2, wh * 17 / 32);
-		CP_Font_DrawText("Press R to Restart", ww / 2, wh * 20 / 32);
+		CP_Font_DrawText(playText, ww / 2, wh * 7 / 16);
+		CP_Font_DrawText("QUIT", ww / 2, wh * 17 / 32);
+		CP_Font_DrawText("RESET", ww / 2, wh * 20 / 32);
 
 		pauseMenuShowing = true;
 	}
@@ -723,6 +719,7 @@ void pause_update(void) {
 
 void pause_exit(void) {
 	pauseMenuShowing = false;
+	sprintf_s(playText, _countof(playText), "CONTINUE");
 }
 
 
