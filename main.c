@@ -257,6 +257,8 @@ void drawCoin(float initialX, float initialY, float size) {
 		sprintf_s(guide, _countof(guide), "Explore for a new coin!");
 		coinTriggered = true;
 	}
+
+	CP_Settings_Fill(BLACK);
 }
 
 void game_init(void) {
@@ -318,6 +320,11 @@ void game_update(void) {
 		CP_Settings_Fill(BLACK);
 
 		/*************\
+		| DRAW PLAYER |
+		\*************/
+		drawPlayer(BLACK);
+
+		/*************\
 		| DRAW CLOUDS |
 		\*************/
 		for (int i = 0; i < CLOUD_ARR_SIZE; i++) {
@@ -370,11 +377,6 @@ void game_update(void) {
 		| DRAW COIN |
 		\***********/
 		drawCoin(activeCoin.x, activeCoin.y, 80);
-
-		/*************\
-		| DRAW PLAYER |
-		\*************/
-		drawPlayer(BLACK);
 
 		/*******************************************************\
 		| CALCULATE VELOCITY, POSITION, ROTATION, AND DIRECTION |
